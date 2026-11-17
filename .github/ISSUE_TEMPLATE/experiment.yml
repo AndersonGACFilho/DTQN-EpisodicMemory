@@ -1,0 +1,61 @@
+name: Experiment
+description: An experiment run, ablation or pilot
+title: "[Exp] "
+labels: ["experiment"]
+type: Experiment
+projects: ["AndersonGACFilho/19"]
+body:
+  - type: dropdown
+    id: agent
+    attributes:
+      label: Agent
+      options:
+        - DTQN (original)
+        - DTQN + kNN memory
+        - DTQN (K covering the corridor)
+        - DRQN (original)
+        - DRQN + kNN memory
+    validations:
+      required: true
+  - type: dropdown
+    id: environment
+    attributes:
+      label: Environment
+      options:
+        - Passive T-Maze
+        - Noisy T-Maze
+        - Car Flag
+        - Memory Cards
+    validations:
+      required: true
+  - type: textarea
+    id: config
+    attributes:
+      label: Configuration
+      description: Dependency distance, context length K and memory settings.
+      value: |
+        - Corridor length / dependency distance:
+        - Context length K:
+        - Memory size:
+        - Top-k:
+        - Gate: on / off
+        - Key layer:
+        - Keys: stop-gradient / differentiable
+        - Noise level (Noisy T-Maze):
+    validations:
+      required: true
+  - type: input
+    id: seeds
+    attributes:
+      label: Seeds
+      value: "5"
+  - type: textarea
+    id: command
+    attributes:
+      label: Command to reproduce
+      render: shell
+  - type: textarea
+    id: results
+    attributes:
+      label: Results
+      description: Success rate (mean ± std, 95% CI), cue-in-top-k hit rate, wall-clock time and peak GPU memory. Can be filled in later.

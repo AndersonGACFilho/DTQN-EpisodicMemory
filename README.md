@@ -1,3 +1,82 @@
+# Pluggable kNN Episodic Memory for Deep Q-Learning Agents in Partially Observable Environments
+
+Pluggable kNN episodic memory (from Memorizing Transformers) for DTQN and DRQN agents in partially observable RL. Tests whether agents can use information beyond the context window, evaluated on the Passive T-Maze, Car Flag and Memory Cards.
+
+> **Status:** UFRGS Deep Learning final project (Group 7), due **11/30/2026**. This repository is a fork of [kevslinger/DTQN](https://github.com/kevslinger/DTQN); the original DTQN documentation is kept [below](#deep-transformer-q-networks-for-partially-observable-reinforcement-learning).
+
+## Overview
+
+In partially observable problems (POMDPs), the current observation is not enough to act and the agent must remember something seen earlier in the episode. The Deep Transformer Q-Network (DTQN) applies a transformer decoder over the last K observations, so anything older than K steps falls out of context, and Cherepanov et al. (2024) show that DTQN then performs at chance.
+
+We couple the external kNN memory from Memorizing Transformers (Wu et al., 2022) to DTQN: (key, value) pairs from earlier steps of the episode are stored and retrieved by similarity, giving access to information beyond the window.
+
+## Research question
+
+Can a pluggable kNN memory let Deep Q-Learning agents use information beyond the context window, without hurting performance when the information is inside it?
+
+- **Beyond the window (dependency > K):** DTQN + memory reaches a quantitative success target where the original DTQN is at chance.
+- **Within the window (dependency ≤ K):** DTQN + memory ties with the original DTQN.
+
+The quantitative target and the tie criterion are fixed in the revised proposal. Every configuration uses at least 5 seeds and reports mean ± std with 95% confidence intervals.
+
+## Environments and what each tests
+
+| Environment | What it tests |
+|---|---|
+| **Passive T-Maze** (Ni et al., 2023) | Main experiment: the corridor length controls the dependency distance, below and above K |
+| **Noisy T-Maze** | Whether retrieval still finds the cue when it is less distinct, since stored keys receive no gradient |
+| **Car Flag** and **Memory Cards** | Already solved by DTQN with K = 50, so they check that the memory does not hurt within the window |
+
+## Agents and baselines
+
+| Agent | Role |
+|---|---|
+| DTQN (original) | Main baseline |
+| DTQN with K covering the corridor | Answers "why not increase K?", with time and GPU-memory cost, where feasible |
+| DTQN + kNN memory | Proposed method |
+| DRQN (+ kNN memory) | **Optional**: only if the DTQN results are promising and time allows; needs its own coupling (what is key/value and how the read combines with the hidden state) and hypothesis |
+
+## Design questions addressed
+
+- **Memory during training:** DTQN trains on length-K subsequences sampled from the replay buffer, so the memory must hold the (key, value) pairs of the steps before the window.
+- **Keys without gradient:** nothing forces the query to retrieve the cue step; the noisy T-Maze and the stop-gradient vs. differentiable ablation test this.
+- **Retrieval diagnostic:** we log whether the cue step is in the top-k at decision time, to separate retrieval failure from usage failure.
+- **Ablations:** gate, top-k, memory size, key layer, stop-gradient vs. differentiable memory.
+- **Compute budget:** an early pilot estimates GPU-hours before the experiment grid is fixed; the desired but infeasible grid is discussed in the paper.
+
+## Project management
+
+Work is tracked in the [GitHub Project](https://github.com/users/AndersonGACFilho/projects/19) (Kanban, Roadmap, Goals, Epics, Priorities and one board per person).
+
+| Milestone | Due | Goal |
+|---|---|---|
+| M1: Proposal revised & design | 11/17 | Proposal updated with the professor's feedback; memory design fixed |
+| M2: Memory module & environments | 11/20 | Passive T-Maze, evaluation harness and kNN memory integrated into DTQN |
+| M3: Pilot & experiment grid | 11/22 | GPU-hour pilot, large-K cost and the final experiment grid |
+| M4: Experiments | 11/25 | Main experiments, within-window check, noisy T-Maze and ablations |
+| M5: Analysis & figures | 11/26 | Results table, retrieval analysis and figures |
+| M6: Paper draft | 11/28 | All sections written and reviewed |
+| M7: Submission | 11/30 | Paper submitted |
+
+| Role | Responsibility | Paper sections |
+|---|---|---|
+| **P1** | Passive T-Maze, evaluation harness, main experiment, results, figures | Results |
+| **P2** | Memory design and module, DTQN integration, retrieval diagnostic, ablations | Method |
+| **P3** | DTQN baseline, GPU-hour pilot, large-K cost, within-window check, DRQN (optional) | Related work, setup |
+| **P4** | Proposal revision, targets, noisy T-Maze, experiment grid, coordination, submission | Introduction, discussion, conclusion, abstract |
+
+**Conventions:** issue types (Epic, Feature, Task, Experiment, Writing, Research, Bug); form templates in [`.github/ISSUE_TEMPLATE`](.github/ISSUE_TEMPLATE); epics group tasks as sub-issues; blocked by / blocking links follow the critical path; labels `P1`–`P4` mark the people involved and `optional` marks the DRQN work.
+
+## References
+
+- Esslinger, Platt and Amato (2022). *Deep Transformer Q-Networks for Partially Observable Reinforcement Learning.* [arXiv:2206.01078](https://arxiv.org/abs/2206.01078)
+- Wu, Rabe, Hutchins and Szegedy (2022). *Memorizing Transformers.* ICLR 2022. [arXiv:2203.08913](https://arxiv.org/abs/2203.08913)
+- Hausknecht and Stone (2015). *Deep Recurrent Q-Learning for Partially Observable MDPs.* [arXiv:1507.06527](https://arxiv.org/abs/1507.06527)
+- Cherepanov et al. (2024). *Unraveling the Complexity of Memory in RL Agents.* [arXiv:2412.06531](https://arxiv.org/abs/2412.06531)
+- Ni, Ma, Eysenbach and Bacon (2023). *When Do Transformers Shine in RL? Decoupling Memory from Credit Assignment.* NeurIPS 2023. [arXiv:2307.03864](https://arxiv.org/abs/2307.03864)
+
+---
+
 # Deep Transformer Q-Networks for Partially Observable Reinforcement Learning
 
 Deep Transformer Q-Network (DTQN) is an extension of [DQN](https://www.nature.com/articles/nature14236) and [DRQN](https://arxiv.org/abs/1507.06527) designed to encode an agent's history effectively for solving partially observable reinforcement learning tasks.
