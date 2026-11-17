@@ -3,6 +3,8 @@
 Pluggable kNN episodic memory (from Memorizing Transformers) for DTQN and DRQN agents in partially observable RL. Tests whether agents can use information beyond the context window, evaluated on the Passive T-Maze, Car Flag and Memory Cards.
 
 > **Status:** UFRGS Deep Learning final project (Group 7), due **11/30/2026**. This repository is a fork of [kevslinger/DTQN](https://github.com/kevslinger/DTQN); the original DTQN documentation is kept [below](#deep-transformer-q-networks-for-partially-observable-reinforcement-learning).
+>
+> **Paper (Overleaf):** _link to be added_ ([#42](https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/issues/42))
 
 ## Overview
 
