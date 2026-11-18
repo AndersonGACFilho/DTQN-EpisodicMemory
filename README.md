@@ -48,6 +48,30 @@ The proposal was graded 100/100; the professor's ten comments are mapped to issu
 - **Ablations:** gate, top-k, memory size, key layer, stop-gradient vs. differentiable memory.
 - **Compute budget:** an early pilot estimates GPU-hours before the experiment grid is fixed; the desired but infeasible grid is discussed in the paper.
 
+## kNN episodic memory
+
+The memory lives in [`dtqn/networks/knn_memory.py`](dtqn/networks/knn_memory.py) (#5):
+
+- `KNNMemory` is a per-episode FIFO store of per-head (key, value) pairs with exact top-k retrieval by cosine similarity. It holds one memory per batch element, so a training batch can carry the prefixes of different episodes.
+- `KNNAttention` is causal multi-head attention that also attends to the retrieved neighbours and mixes both per head with a learned gate `g_h = sigmoid(b_h)`. With the gate off, or with an empty memory, its output is exactly that of the `nn.MultiheadAttention` it wraps.
+
+Both are configured by `MemoryConfig`. Command-line flags are added when the memory is wired into DTQN (#7).
+
+| Option | Default | Effect |
+|---|---|---|
+| `size` | `256` | Steps stored per episode; the oldest step is evicted when full |
+| `top_k` | `8` | Neighbours retrieved per query |
+| `layer` | `-1` (last) | Transformer layer whose attention reads the memory |
+| `gate` | `True` | `False` uses local attention only |
+| `gate_bias_init` | `0.0` | Initial gate bias `b_h` |
+| `stop_grad` | `True` | Stored keys and values receive no gradient |
+
+The defaults are provisional until the pilot (#11) and the ablations (#22). Unit tests:
+
+```bash
+python -m unittest discover tests
+```
+
 ## Project management
 
 Work is tracked in the [GitHub Project](https://github.com/users/AndersonGACFilho/projects/19) (Kanban, Roadmap, Goals, Epics, Priorities and one board per person).
