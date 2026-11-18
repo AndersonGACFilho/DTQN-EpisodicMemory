@@ -5,6 +5,13 @@ labels: ["experiment"]
 type: Experiment
 projects: ["AndersonGACFilho/19"]
 body:
+  - type: textarea
+    id: objective
+    attributes:
+      label: Objective
+      description: Which hypothesis or question this run answers.
+    validations:
+      required: true
   - type: dropdown
     id: agent
     attributes:
@@ -54,6 +61,24 @@ body:
     attributes:
       label: Command to reproduce
       render: shell
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      value: |
+        - [ ] **AC1:** Every configuration has results for all seeds
+        - [ ] **AC2:** The success / tie criterion from #1 is evaluated
+    validations:
+      required: true
+  - type: textarea
+    id: dod
+    attributes:
+      label: Definition of done
+      value: |
+        - [ ] Configs and the exact command recorded in this issue
+        - [ ] Raw results (CSV per seed) committed under `results/` or linked
+        - [ ] Summary posted: mean ± std and 95% CI over at least 5 seeds
+        - [ ] Wall-clock time and peak GPU memory reported
   - type: textarea
     id: results
     attributes:
