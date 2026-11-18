@@ -10,10 +10,10 @@ body:
     attributes:
       label: Owner
       options:
-        - P1 (environments and evaluation)
+        - P1 Estevan Küster (environments and evaluation)
         - P2 Anderson Gonçalves (kNN memory module)
         - P3 Esthevan Ferretti (baselines, compute budget and DRQN)
-        - P4 (coordination, noise and paper)
+        - P4 João Augusto Laner (coordination, noise and paper)
         - Everyone
     validations:
       required: true
