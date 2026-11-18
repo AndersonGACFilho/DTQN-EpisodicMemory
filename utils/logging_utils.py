@@ -1,10 +1,11 @@
-import wandb
+import argparse
 import csv
 import os
-from typing import Dict
 from collections import deque
 from datetime import datetime
-import argparse
+from typing import Dict
+
+import wandb
 
 
 class RunningAverage:

@@ -1,11 +1,10 @@
 from typing import Callable, Union
 
 import torch
-from torch.nn import Module
 import torch.nn.functional as F
+from torch.nn import Module
 
 from dtqn.agents.dqn import DqnAgent, TrainMode
-from dtqn.buffers.replay_buffer import ReplayBuffer
 from utils.context import Context
 from utils.random import RNG
 

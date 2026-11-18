@@ -1,0 +1,86 @@
+[tool.ruff]
+target-version = "py38"
+line-length = 88
+
+[tool.ruff.lint]
+select = [
+    "E4", "E7", "E9", # pycodestyle errors not covered by the formatter
+    "F",              # pyflakes
+    "W",              # pycodestyle warnings
+    "I",              # import order
+    "B",              # bugbear
+    "UP",             # pyupgrade
+]
+
+[tool.ruff.lint.per-file-ignores]
+# Optional environment packages are imported only to register their domains
+"envs/__init__.py" = ["F401"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["dtqn", "envs", "utils"]
+
+[tool.mypy]
+python_version = "3.10"
+files = ["dtqn", "envs", "utils", "tests", "run.py"]
+strict = true
+warn_unreachable = true
+# torch 1.11 leaves parts of its API unannotated (for example torch.no_grad)
+untyped_calls_exclude = ["torch"]
+
+[[tool.mypy.overrides]]
+# Third-party packages without type information
+module = [
+    "gym.*",
+    "gym_gridverse.*",
+    "gym_pomdps.*",
+    "joblib.*",
+    "minihack.*",
+    "nle.*",
+    "pyglet.*",
+    "wandb.*",
+]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+# Tests exercise the untyped modules listed below
+module = ["tests.*"]
+disallow_untyped_calls = false
+
+[[tool.mypy.overrides]]
+# Untyped code inherited from the DTQN upstream. New modules are checked in full;
+# remove a module from this list once it passes.
+module = [
+    "dtqn",
+    "dtqn.agents",
+    "dtqn.agents.dqn",
+    "dtqn.agents.drqn",
+    "dtqn.agents.dtqn",
+    "dtqn.buffers",
+    "dtqn.buffers.replay_buffer",
+    "dtqn.networks",
+    "dtqn.networks.adrqn",
+    "dtqn.networks.darqn",
+    "dtqn.networks.dqn",
+    "dtqn.networks.drqn",
+    "dtqn.networks.dtqn",
+    "dtqn.networks.gates",
+    "dtqn.networks.position_encodings",
+    "dtqn.networks.representations",
+    "dtqn.networks.transformer",
+    "envs",
+    "envs.car_flag",
+    "envs.gv_wrapper",
+    "envs.memory_cards",
+    "envs.mini_hack",
+    "run",
+    "utils",
+    "utils.agent_utils",
+    "utils.bag",
+    "utils.context",
+    "utils.env_processing",
+    "utils.epsilon_anneal",
+    "utils.logging_utils",
+    "utils.random",
+    "utils.torch_utils",
+]
+ignore_errors = true

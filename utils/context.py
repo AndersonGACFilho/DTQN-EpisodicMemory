@@ -1,8 +1,10 @@
 from typing import Tuple, Union
+
 import numpy as np
 import torch
 
 from utils.random import RNG
+
 
 # noinspection PyAttributeOutsideInit
 class Context:

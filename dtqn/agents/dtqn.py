@@ -2,11 +2,11 @@ from typing import Callable, Union
 
 import numpy as np
 import torch
-from torch.nn import Module
 import torch.nn.functional as F
+from torch.nn import Module
 
-from dtqn.agents.drqn import DqnAgent
 from dtqn.agents.dqn import TrainMode
+from dtqn.agents.drqn import DqnAgent
 from utils.bag import Bag
 from utils.context import Context
 from utils.random import RNG
