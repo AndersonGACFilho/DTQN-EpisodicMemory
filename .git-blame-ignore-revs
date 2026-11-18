@@ -1,0 +1,4 @@
+# Formatting-only commits, skipped by git blame (git config blame.ignoreRevsFile .git-blame-ignore-revs)
+
+# Apply ruff lint and format fixes to the existing code
+b8ef9b2e5c6d60f1b7fc16d32b103d096db76315
