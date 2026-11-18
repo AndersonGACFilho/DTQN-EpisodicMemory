@@ -5,6 +5,7 @@ from typing import Optional, Tuple
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+from torch.nn.parameter import Parameter
 
 
 @dataclass
@@ -55,6 +56,10 @@ class KNNMemory:
         self.head_dim = head_dim
         self.stop_grad = stop_grad
         self.device = device
+        self.keys: torch.Tensor
+        self.values: torch.Tensor
+        self.ptr: torch.Tensor
+        self.count: torch.Tensor
         self.reset(batch_size=1)
 
     @classmethod
@@ -70,7 +75,7 @@ class KNNMemory:
     def reset(self, batch_size: Optional[int] = None) -> None:
         """Empties the memory. Call at the start of every episode."""
         if batch_size is None:
-            batch_size = self.keys.size(0)
+            batch_size = self.batch_size
         shape = (batch_size, self.size, self.num_heads, self.head_dim)
         self.keys = torch.zeros(shape, device=self.device)
         self.values = torch.zeros(shape, device=self.device)
@@ -80,11 +85,11 @@ class KNNMemory:
 
     @property
     def batch_size(self) -> int:
-        return self.keys.size(0)
+        return int(self.keys.shape[0])
 
     @property
     def is_empty(self) -> bool:
-        return bool((self.count == 0).all())
+        return bool(self.count.eq(0).all())
 
     def add(
         self,
@@ -98,13 +103,11 @@ class KNNMemory:
         valid        is batch x steps (bool), marks the real steps of padded prefixes
         """
         batch_size, steps = keys.shape[:2]
-        assert (
-            batch_size == self.batch_size
-        ), f"Memory holds {self.batch_size} episodes, got {batch_size}"
+        assert batch_size == self.batch_size, (
+            f"Memory holds {self.batch_size} episodes, got {batch_size}"
+        )
         if valid is None:
-            valid = torch.ones(
-                batch_size, steps, dtype=torch.bool, device=keys.device
-            )
+            valid = torch.ones(batch_size, steps, dtype=torch.bool, device=keys.device)
         if self.stop_grad:
             keys = keys.detach()
             values = values.detach()
@@ -118,7 +121,9 @@ class KNNMemory:
 
         batch_idx, step_idx = keep.nonzero(as_tuple=True)
         slot_idx = slots[batch_idx, step_idx]
-        self.keys = self.keys.index_put((batch_idx, slot_idx), keys[batch_idx, step_idx])
+        self.keys = self.keys.index_put(
+            (batch_idx, slot_idx), keys[batch_idx, step_idx]
+        )
         self.values = self.values.index_put(
             (batch_idx, slot_idx), values[batch_idx, step_idx]
         )
@@ -142,15 +147,17 @@ class KNNMemory:
             F.normalize(queries, dim=-1),
             F.normalize(self.keys, dim=-1),
         )
-        filled = torch.arange(self.size, device=queries.device) < self.count.unsqueeze(1)
-        similarity = similarity.masked_fill(
-            ~filled[:, None, None, :], -float("inf")
+        filled = torch.arange(self.size, device=queries.device) < self.count.unsqueeze(
+            1
         )
+        similarity = similarity.masked_fill(~filled[:, None, None, :], -float("inf"))
         top_similarity, top_idx = similarity.topk(k, dim=-1)
 
         batch_size, seq_len = queries.shape[:2]
         batch_idx = torch.arange(batch_size, device=queries.device)[:, None, None, None]
-        head_idx = torch.arange(self.num_heads, device=queries.device)[None, None, :, None]
+        head_idx = torch.arange(self.num_heads, device=queries.device)[
+            None, None, :, None
+        ]
         return (
             self.keys[batch_idx, top_idx, head_idx],
             self.values[batch_idx, top_idx, head_idx],
@@ -189,13 +196,13 @@ class KNNAttention(nn.Module):
             dropout=dropout,
             batch_first=True,
         )
-        self.gate_bias = nn.Parameter(
-            torch.full((num_heads,), self.config.gate_bias_init)
-        )
+        self.gate_bias = Parameter(torch.full((num_heads,), self.config.gate_bias_init))
         # Just storage for attention weights for visualization
         self.alpha = None
 
-    def project(self, x: torch.Tensor) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+    def project(
+        self, x: torch.Tensor
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
         """Per-head query, key and value: batch x seq_len x embed -> batch x seq_len x heads x head_dim"""
         q, k, v = F.linear(x, self.attn.in_proj_weight, self.attn.in_proj_bias).chunk(
             3, dim=-1
