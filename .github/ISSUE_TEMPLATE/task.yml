@@ -12,7 +12,7 @@ body:
       options:
         - P1 (environments and evaluation)
         - P2 Anderson Gonçalves (kNN memory module)
-        - P3 (baselines, compute budget and DRQN)
+        - P3 Esthevan Ferretti (baselines, compute budget and DRQN)
         - P4 (coordination, noise and paper)
         - Everyone
     validations:
