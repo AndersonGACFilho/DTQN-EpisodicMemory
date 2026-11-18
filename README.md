@@ -64,7 +64,7 @@ Work is tracked in the [GitHub Project](https://github.com/users/AndersonGACFilh
 |---|---|---|
 | **P1** | Passive T-Maze, evaluation harness, main experiment, results, figures | Results |
 | **P2** (Anderson Gonçalves) | Memory design and module, DTQN integration, retrieval diagnostic, ablations | Method |
-| **P3** | DTQN baseline, GPU-hour pilot, large-K cost, within-window check, DRQN (optional) | Related work, setup |
+| **P3** (Esthevan Ferretti) | DTQN baseline, GPU-hour pilot, large-K cost, within-window check, DRQN (optional) | Related work, setup |
 | **P4** | Proposal revision, targets, noisy T-Maze, experiment grid, coordination, submission | Introduction, discussion, conclusion, abstract |
 
 **Conventions:** issue types (Epic, Feature, Task, Experiment, Writing, Research, Bug); form templates in [`.github/ISSUE_TEMPLATE`](.github/ISSUE_TEMPLATE); epics group tasks as sub-issues; blocked by / blocking links follow the critical path; labels `P1`–`P4` mark the people involved and `optional` marks the DRQN work.
