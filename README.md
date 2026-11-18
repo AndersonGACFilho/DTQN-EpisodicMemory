@@ -42,7 +42,7 @@ The quantitative target and the tie criterion are defined in #1. Every configura
 
 The proposal was graded 100/100; the professor's ten comments are mapped to issues in #4 and answered in the paper.
 
-- **Memory during training:** DTQN trains on length-K subsequences sampled from the replay buffer, so the memory must hold the (key, value) pairs of the steps before the window.
+- **Memory during training:** DTQN trains on length-K subsequences sampled from the replay buffer, so the memory must hold the (key, value) pairs of the steps before the window. These are recomputed with the current network under `no_grad` at every training step, with stop-gradient memory as the default ([design note](docs/memory-population.md), #3).
 - **Keys without gradient:** nothing forces the query to retrieve the cue step; the noisy T-Maze and the stop-gradient vs. differentiable ablation test this.
 - **Retrieval diagnostic:** we log whether the cue step is in the top-k at decision time, to separate retrieval failure from usage failure.
 - **Ablations:** gate, top-k, memory size, key layer, stop-gradient vs. differentiable memory.
