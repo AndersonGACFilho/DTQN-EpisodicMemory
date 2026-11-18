@@ -48,6 +48,27 @@ The proposal was graded 100/100; the professor's ten comments are mapped to issu
 - **Ablations:** gate, top-k, memory size, key layer, stop-gradient vs. differentiable memory.
 - **Compute budget:** an early pilot estimates GPU-hours before the experiment grid is fixed; the desired but infeasible grid is discussed in the paper.
 
+## Development
+
+Every pull request and push to `main` runs [CI](.github/workflows/ci.yml): lint and format checks ([pre-commit](.pre-commit-config.yaml) with ruff), type checking (mypy) and unit tests, on Python 3.10 with torch 1.11 (CPU). Tool settings live in [`pyproject.toml`](pyproject.toml).
+
+Set up the same checks locally:
+
+```bash
+pip install -r requirements-dev.txt
+pre-commit install
+```
+
+`pre-commit install` adds two git hooks: ruff and file hygiene run on every commit, and mypy and the unit tests run on every push. To run them by hand:
+
+```bash
+pre-commit run --all-files
+python -m mypy
+python -m unittest discover -s tests
+```
+
+mypy runs in strict mode. Modules inherited from the DTQN upstream are listed in `pyproject.toml` with their errors ignored; new modules must pass, and a legacy module leaves the list once it does.
+
 ## Project management
 
 Work is tracked in the [GitHub Project](https://github.com/users/AndersonGACFilho/projects/19) (Kanban, Roadmap, Goals, Epics, Priorities and one board per person).
@@ -90,7 +111,7 @@ Each element in the output sequence represents the Q-values for each action, giv
 For instance, the 3rd vector of Q-values was generated based on only the first three interactions between the agent and the environment.
 This method allows us to train much more efficiently than a Sequence-to-One method, since we get `Sequence` more data points to use for training.
 Our results providence strong evidence indicating a transformer can solve partially observable domains faster than previous recurrent approaches.
-Our paper is now publicly available on arXiv! 
+Our paper is now publicly available on arXiv!
 You can read it [here](https://arxiv.org/abs/2206.01078).
 
 Please note that we are continuing to work on this repository to extend and improve DTQN.
@@ -171,7 +192,7 @@ Tada! Now, you should be ready to run experiments.
 
 ## Running Experiments
 
-Our experiment script is `run.py`. 
+Our experiment script is `run.py`.
 The arguments are explained at the bottom of the file.
 Using the command
 ```shell
@@ -192,7 +213,7 @@ Here we provide a mapping from domain name as used in the paper to domain name u
 - Memory Cards: `Memory-5-v0`
 
 If you want to change the environment, use the `--envs` flag.
-You can add multiple `envs` as long as they share the same observation and action space. 
+You can add multiple `envs` as long as they share the same observation and action space.
 In that case, the agent will collect data with policy rollouts by randomly sampling one of the provided envs.
 During evaluation, it will evaluate the policy separately on each environment, and record the results for each domain separately.
 To reproduce our results, you may need to change the `in-embed` flag as well.
@@ -257,7 +278,7 @@ If you want command line outputs to view training results, use `--verbose`.
 
 ### Ablations
 
-#### Transformer Decoder Structure 
+#### Transformer Decoder Structure
 To run DTQN with the GRU-like gating mechanism, use `--gate gru`.
 
 To run DTQN with identity map reordering, use `--identity`.
