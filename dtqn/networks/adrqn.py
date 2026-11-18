@@ -1,10 +1,12 @@
+from typing import Optional, Tuple
+
 import torch
 import torch.nn as nn
 import torch.nn.utils.rnn as rnn
-from typing import Optional, Tuple
+
 from dtqn.networks.representations import (
-    ObservationEmbeddingRepresentation,
     ActionEmbeddingRepresentation,
+    ObservationEmbeddingRepresentation,
 )
 from utils import torch_utils
 
@@ -21,7 +23,7 @@ class ADRQN(nn.Module):
         inner_embed_size: int,
         is_discrete_env: bool,
         obs_vocab_size: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__()
         if is_discrete_env:

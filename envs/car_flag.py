@@ -1,9 +1,7 @@
-# -*- coding: utf-8 -*-
-
-import numpy as np
-from numpy.random import Generator
 import gym
+import numpy as np
 from gym import spaces
+from numpy.random import Generator
 from pyglet.canvas.xlib import NoSuchDisplayException
 
 # Running on slurm
@@ -244,8 +242,10 @@ class CarFlag(gym.Env):
             carwidth = 40
             carheight = 20
 
-            l, r, t, b = -carwidth / 2, carwidth / 2, carheight, 0
-            car = visualize.FilledPolygon([(l, b), (l, t), (r, t), (r, b)])
+            left, right, top, bottom = -carwidth / 2, carwidth / 2, carheight, 0
+            car = visualize.FilledPolygon(
+                [(left, bottom), (left, top), (right, top), (right, bottom)]
+            )
             car.add_attr(visualize.Transform(translation=(0, clearance)))
             self.cartrans = visualize.Transform()
             car.add_attr(self.cartrans)

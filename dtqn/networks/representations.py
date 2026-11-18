@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Tuple, Optional
+
 import math
 
 import torch
@@ -37,12 +37,12 @@ class ObservationEmbeddingRepresentation(nn.Module):
             embed_size:         The length of the resulting embedding vector.
         """
 
-        assert (
-            vocab_sizes > 0
-        ), "Discrete environments need to have a vocab size for the token embeddings"
-        assert (
-            embed_per_obs_dim > 1
-        ), "Each observation feature needs at least 1 embed dim"
+        assert vocab_sizes > 0, (
+            "Discrete environments need to have a vocab size for the token embeddings"
+        )
+        assert embed_per_obs_dim > 1, (
+            "Each observation feature needs at least 1 embed dim"
+        )
 
         embedding = nn.Sequential(
             nn.Embedding(vocab_sizes, embed_per_obs_dim),
@@ -75,7 +75,7 @@ class ObservationEmbeddingRepresentation(nn.Module):
         return ObservationEmbeddingRepresentation(observation_embedding=embedding)
 
     @staticmethod
-    def make_image_representation(obs_dim: Tuple, outer_embed_size: int):
+    def make_image_representation(obs_dim: tuple, outer_embed_size: int):
         """
         For use in image observatino environments.
 

@@ -1,9 +1,10 @@
-import torch
-import numpy as np
-import random
 import os
+import random
+from typing import Tuple
+
 import gym
-from typing import Optional, Tuple
+import numpy as np
+import torch
 
 
 class RNG:

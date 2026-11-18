@@ -1,7 +1,9 @@
-import torch.nn as nn
-import torch
-import torch.nn.utils.rnn as rnn
 from typing import Optional, Tuple
+
+import torch
+import torch.nn as nn
+import torch.nn.utils.rnn as rnn
+
 from dtqn.networks.dqn import DQN
 from utils import torch_utils
 
@@ -18,7 +20,7 @@ class DRQN(DQN):
         inner_embed: int,
         is_discrete_env: bool,
         obs_vocab_size: Optional[int] = None,
-        **kwargs
+        **kwargs,
     ) -> None:
         super().__init__(
             obs_dim=obs_dim,
@@ -28,7 +30,7 @@ class DRQN(DQN):
             inner_embed_size=inner_embed,
             is_discrete_env=is_discrete_env,
             obs_vocab_size=obs_vocab_size,
-            **kwargs
+            **kwargs,
         )
         self.lstm = nn.LSTM(
             input_size=inner_embed, hidden_size=inner_embed, batch_first=True

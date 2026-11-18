@@ -1,6 +1,7 @@
-import numpy as np
 import random
 from typing import Optional, Tuple, Union
+
+import numpy as np
 
 from utils.bag import Bag
 

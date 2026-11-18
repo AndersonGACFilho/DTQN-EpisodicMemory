@@ -1,14 +1,16 @@
+from typing import Optional, Union
+
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
-from typing import Optional, Union
-from dtqn.networks.representations import (
-    ObservationEmbeddingRepresentation,
-    ActionEmbeddingRepresentation,
-)
-from dtqn.networks.position_encodings import PosEnum, PositionEncoding
+
 from dtqn.networks.gates import GRUGate, ResGate
-from dtqn.networks.transformer import TransformerLayer, TransformerIdentityLayer
+from dtqn.networks.position_encodings import PosEnum, PositionEncoding
+from dtqn.networks.representations import (
+    ActionEmbeddingRepresentation,
+    ObservationEmbeddingRepresentation,
+)
+from dtqn.networks.transformer import TransformerIdentityLayer, TransformerLayer
 from utils import torch_utils
 
 
@@ -168,15 +170,15 @@ class DTQN(nn.Module):
         bag     is  batch x bag_size x obs_dim
         """
         history_len = obss.size(1)
-        assert (
-            history_len <= self.history_len
-        ), "Cannot forward, history is longer than expected."
+        assert history_len <= self.history_len, (
+            "Cannot forward, history is longer than expected."
+        )
 
         # If the observations are images, obs_dim is the dimensions of the image
         obs_dim = obss.size()[2:] if len(obss.size()) > 3 else obss.size(2)
-        assert (
-            obs_dim == self.obs_dim
-        ), f"Obs dim is incorrect. Expected {self.obs_dim} got {obs_dim}"
+        assert obs_dim == self.obs_dim, (
+            f"Obs dim is incorrect. Expected {self.obs_dim} got {obs_dim}"
+        )
 
         token_embeddings = self.obs_embedding(obss)
 

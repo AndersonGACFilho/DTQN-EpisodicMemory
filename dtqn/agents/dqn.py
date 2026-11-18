@@ -1,18 +1,18 @@
-from typing import Callable, Union, Tuple
-from enum import Enum
 import random
+from enum import Enum
+from typing import Callable, Tuple, Union
 
-import torch
-from torch.nn import Module
-import torch.optim as optim
-import torch.nn.functional as F
-import numpy as np
 import joblib
+import numpy as np
+import torch
+import torch.nn.functional as F
+import torch.optim as optim
+from torch.nn import Module
 
 from dtqn.buffers.replay_buffer import ReplayBuffer
-from utils.logging_utils import RunningAverage
 from utils.context import Context
 from utils.epsilon_anneal import LinearAnneal
+from utils.logging_utils import RunningAverage
 from utils.random import RNG
 
 
