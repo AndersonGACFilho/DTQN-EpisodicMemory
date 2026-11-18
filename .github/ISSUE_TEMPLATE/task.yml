@@ -11,7 +11,7 @@ body:
       label: Owner
       options:
         - P1 (environments and evaluation)
-        - P2 (kNN memory module)
+        - P2 Anderson Gonçalves (kNN memory module)
         - P3 (baselines, compute budget and DRQN)
         - P4 (coordination, noise and paper)
         - Everyone
