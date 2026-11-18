@@ -19,7 +19,7 @@ Can a pluggable kNN memory let Deep Q-Learning agents use information beyond the
 - **Beyond the window (dependency > K):** DTQN + memory reaches a quantitative success target where the original DTQN is at chance.
 - **Within the window (dependency ≤ K):** DTQN + memory ties with the original DTQN.
 
-The quantitative target and the tie criterion are fixed in the revised proposal. Every configuration uses at least 5 seeds and reports mean ± std with 95% confidence intervals.
+The quantitative target and the tie criterion are defined in #1. Every configuration uses at least 5 seeds and reports mean ± std with 95% confidence intervals.
 
 ## Environments and what each tests
 
@@ -40,6 +40,8 @@ The quantitative target and the tie criterion are fixed in the revised proposal.
 
 ## Design questions addressed
 
+The proposal was graded 100/100; the professor's ten comments are mapped to issues in #4 and answered in the paper.
+
 - **Memory during training:** DTQN trains on length-K subsequences sampled from the replay buffer, so the memory must hold the (key, value) pairs of the steps before the window.
 - **Keys without gradient:** nothing forces the query to retrieve the cue step; the noisy T-Maze and the stop-gradient vs. differentiable ablation test this.
 - **Retrieval diagnostic:** we log whether the cue step is in the top-k at decision time, to separate retrieval failure from usage failure.
@@ -52,7 +54,7 @@ Work is tracked in the [GitHub Project](https://github.com/users/AndersonGACFilh
 
 | Milestone | Due | Goal |
 |---|---|---|
-| M1: Proposal revised & design | 11/17 | Proposal updated with the professor's feedback; memory design fixed |
+| M1: Feedback plan & design | 11/17 | Feedback mapped to tasks; quantitative criteria, environment roles and memory design fixed |
 | M2: Memory module & environments | 11/20 | Passive T-Maze, evaluation harness and kNN memory integrated into DTQN |
 | M3: Pilot & experiment grid | 11/22 | GPU-hour pilot, large-K cost and the final experiment grid |
 | M4: Experiments | 11/25 | Main experiments, within-window check, noisy T-Maze and ablations |
@@ -65,7 +67,7 @@ Work is tracked in the [GitHub Project](https://github.com/users/AndersonGACFilh
 | **P1** (Estevan Küster) | Passive T-Maze, evaluation harness, main experiment, results, figures | Results |
 | **P2** (Anderson Gonçalves) | Memory design and module, DTQN integration, retrieval diagnostic, ablations | Method |
 | **P3** (Esthevan Ferretti) | DTQN baseline, GPU-hour pilot, large-K cost, within-window check, DRQN (optional) | Related work, setup |
-| **P4** (João Augusto Laner) | Proposal revision, targets, noisy T-Maze, experiment grid, coordination, submission | Introduction, discussion, conclusion, abstract |
+| **P4** (João Augusto Laner) | Feedback in the paper, targets, noisy T-Maze, experiment grid, coordination, submission | Introduction, discussion, conclusion, abstract |
 
 **Conventions:** issue types (Epic, Feature, Task, Experiment, Writing, Research, Bug); form templates in [`.github/ISSUE_TEMPLATE`](.github/ISSUE_TEMPLATE); epics group tasks as sub-issues; blocked by / blocking links follow the critical path; labels `P1`–`P4` mark the people involved and `optional` marks the DRQN work.
 
