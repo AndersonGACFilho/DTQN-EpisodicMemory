@@ -1,12 +1,13 @@
-import gym
-from gym import spaces
-from gym.wrappers.time_limit import TimeLimit
-import numpy as np
 from typing import Union
 
+import gym
+import numpy as np
+from gym import spaces
+from gym.wrappers.time_limit import TimeLimit
+
 try:
-    from gym_gridverse.gym import GymEnvironment
     from gym_gridverse.envs.yaml.factory import factory_env_from_yaml
+    from gym_gridverse.gym import GymEnvironment
     from gym_gridverse.outer_env import OuterEnv
     from gym_gridverse.representations.observation_representations import (
         make_observation_representation,
@@ -16,15 +17,13 @@ try:
     )
 except ImportError:
     print(
-        f"WARNING: ``gym_gridverse`` is not installed. This means you cannot run an experiment with the `gv_*` domains."
+        "WARNING: ``gym_gridverse`` is not installed. This means you cannot run an experiment with the `gv_*` domains."
     )
     GymEnvironment = None
-from envs.gv_wrapper import GridVerseWrapper
 import os
 from enum import Enum
-from typing import Tuple
 
-from utils.random import RNG
+from envs.gv_wrapper import GridVerseWrapper
 
 
 def make_env(id_or_path: str) -> GymEnvironment:
@@ -89,7 +88,7 @@ def get_env_obs_length(env: gym.Env) -> int:
         return 1
     elif isinstance(env.observation_space, (gym.spaces.MultiDiscrete, gym.spaces.Box)):
         if len(env.observation_space.shape) != 1:
-            raise NotImplementedError(f"We do not yet support 2D observation spaces")
+            raise NotImplementedError("We do not yet support 2D observation spaces")
         return env.observation_space.shape[0]
     elif isinstance(env.observation_space, spaces.MultiBinary):
         return env.observation_space.n

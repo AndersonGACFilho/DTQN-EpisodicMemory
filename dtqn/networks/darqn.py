@@ -1,7 +1,9 @@
 from typing import Optional
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+
 import dtqn.networks.drqn as drqn
 from utils import torch_utils
 

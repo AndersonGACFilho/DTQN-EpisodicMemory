@@ -1,9 +1,9 @@
+from typing import Optional, Union
+
 import gym
 import gym.spaces
-from typing import Union, Optional
 import numpy as np
 from gym.utils import seeding
-
 
 GLYPHS = "glyphs_crop"
 PIXEL = "pixel_crop"

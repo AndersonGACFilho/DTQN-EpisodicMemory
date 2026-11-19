@@ -1,6 +1,8 @@
-import torch.nn as nn
-import torch
 from typing import Optional
+
+import torch
+import torch.nn as nn
+
 from dtqn.networks.representations import ObservationEmbeddingRepresentation
 from utils import torch_utils
 

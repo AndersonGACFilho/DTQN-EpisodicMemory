@@ -1,18 +1,18 @@
 from typing import Tuple
+
 import gym
-import torch
 import numpy as np
+import torch
 
 from dtqn.agents.dqn import DqnAgent
 from dtqn.agents.drqn import DrqnAgent
 from dtqn.agents.dtqn import DtqnAgent
 from dtqn.networks.adrqn import ADRQN
-from dtqn.networks.drqn import DRQN
 from dtqn.networks.darqn import DARQN
 from dtqn.networks.dqn import DQN
+from dtqn.networks.drqn import DRQN
 from dtqn.networks.dtqn import DTQN
 from utils import env_processing
-
 
 MODEL_MAP = {
     "DTQN": DTQN,

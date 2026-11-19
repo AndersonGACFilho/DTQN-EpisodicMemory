@@ -1,6 +1,6 @@
-import os
 import argparse
-from time import time, sleep
+import os
+from time import sleep, time
 from typing import Optional, Tuple
 
 import torch
@@ -9,8 +9,8 @@ from gym import Env
 
 from utils import env_processing, epsilon_anneal
 from utils.agent_utils import MODEL_MAP, get_agent
-from utils.random import set_global_seed, RNG
 from utils.logging_utils import RunningAverage, get_logger, timestamp
+from utils.random import RNG, set_global_seed
 
 
 def get_args():
@@ -474,7 +474,7 @@ def run_experiment(args):
             f"Found a mini checkpoint that completed {steps_completed} training steps."
         )
         if steps_completed >= args.num_steps:
-            print(f"Removing checkpoint and exiting...")
+            print("Removing checkpoint and exiting...")
             if os.path.exists(policy_path + "_checkpoint.pt"):
                 os.remove(policy_path + "_checkpoint.pt")
             exit(0)

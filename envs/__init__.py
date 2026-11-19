@@ -1,6 +1,5 @@
 from gym.envs.registration import register
 
-
 try:
     import gym_gridverse
 except ImportError:

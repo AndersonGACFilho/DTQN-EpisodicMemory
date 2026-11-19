@@ -1,6 +1,6 @@
+from typing import Tuple
+
 import gym
-from gym import spaces
-from typing import Union, Tuple, Optional
 import numpy as np
 from numpy.random import Generator
 
@@ -41,7 +41,7 @@ class Memory(gym.Env):
     """
 
     def __init__(self, num_pairs: int = 5):
-        super(Memory, self).__init__()
+        super().__init__()
 
         self.num_pairs = num_pairs
         self.num_cards = self.num_pairs * 2
