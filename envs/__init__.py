@@ -45,6 +45,11 @@ register(
     entry_point="envs.passive_tmaze:PassiveTMaze",
 )
 
+register(
+    id="NoisyTMaze-v0",
+    entry_point="envs.noisy_tmaze:NoisyTMaze",
+)
+
 
 ############
 # CAR FLAG #

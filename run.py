@@ -50,7 +50,19 @@ def get_args():
         "--corridor-length",
         type=int,
         default=10,
-        help="Corridor length for PassiveTMaze-v0 (positive integer, default: 10).",
+        help="Corridor length for PassiveTMaze-v0 and NoisyTMaze-v0 (positive integer, default: 10).",
+    )
+    parser.add_argument(
+        "--noise-level",
+        type=float,
+        default=0.5,
+        help="NoisyTMaze-v0 corridor distractor probability, between 0 and 1 (default: 0.5).",
+    )
+    parser.add_argument(
+        "--noise-std",
+        type=float,
+        default=0.1,
+        help="NoisyTMaze-v0 Gaussian standard deviation, positive (default: 0.1).",
     )
     parser.add_argument(
         "--num-steps",
@@ -418,8 +430,22 @@ def run_experiment(args):
     envs = []
     eval_envs = []
     for env_str in args.envs:
-        envs.append(env_processing.make_env(env_str, args.corridor_length))
-        eval_envs.append(env_processing.make_env(env_str, args.corridor_length))
+        envs.append(
+            env_processing.make_env(
+                env_str,
+                args.corridor_length,
+                noise_level=args.noise_level,
+                noise_std=args.noise_std,
+            )
+        )
+        eval_envs.append(
+            env_processing.make_env(
+                env_str,
+                args.corridor_length,
+                noise_level=args.noise_level,
+                noise_std=args.noise_std,
+            )
+        )
     device = torch.device(args.device)
     set_global_seed(args.seed, *(envs + eval_envs))
 
@@ -464,8 +490,10 @@ def run_experiment(args):
         f"model={args.model}_envs={','.join(args.envs)}_obs_embed={args.obs_embed}_a_embed={args.a_embed}_in_embed={args.in_embed}_context={args.context}_heads={args.heads}_layers={args.layers}_"
         f"batch={args.batch}_gate={args.gate}_identity={args.identity}_history={args.history}_pos={args.pos}_bag={args.bag_size}_seed={args.seed}",
     )
-    if "PassiveTMaze-v0" in args.envs:
+    if {"PassiveTMaze-v0", "NoisyTMaze-v0"}.intersection(args.envs):
         policy_path += f"_corridor={args.corridor_length}"
+    if "NoisyTMaze-v0" in args.envs:
+        policy_path += f"_noise={args.noise_level:g}_std={args.noise_std:g}"
 
     # Enjoy mode
     if args.render:
