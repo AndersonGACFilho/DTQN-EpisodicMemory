@@ -26,11 +26,16 @@ from enum import Enum
 from envs.gv_wrapper import GridVerseWrapper
 
 
-def make_env(id_or_path: str) -> GymEnvironment:
+def make_env(id_or_path: str, corridor_length: int = 10) -> GymEnvironment:
     """Makes a GV gym environment."""
     try:
         print("Loading using gym.make")
-        env = gym.make(id_or_path)
+        kwargs = (
+            {"corridor_length": corridor_length}
+            if id_or_path == "PassiveTMaze-v0"
+            else {}
+        )
+        env = gym.make(id_or_path, **kwargs)
 
     except gym.error.Error:
         print(f"Environment with id {id_or_path} not found.")

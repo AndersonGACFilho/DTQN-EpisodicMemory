@@ -47,6 +47,12 @@ def get_args():
         help="Domain to use. You can supply multiple domains, but they must have the same observation and action space. With multiple environments, the agent will sample a new one on each episode reset for conducting policy rollouts and collection experience. During evaluation, it will perform the same evaluation for each domain (Note: this may significantly slow down your run! Consider increasing the eval-frequency or reducing the eval-episodes).",
     )
     parser.add_argument(
+        "--corridor-length",
+        type=int,
+        default=10,
+        help="Corridor length for PassiveTMaze-v0 (positive integer, default: 10).",
+    )
+    parser.add_argument(
         "--num-steps",
         type=int,
         default=2_000_000,
@@ -412,8 +418,8 @@ def run_experiment(args):
     envs = []
     eval_envs = []
     for env_str in args.envs:
-        envs.append(env_processing.make_env(env_str))
-        eval_envs.append(env_processing.make_env(env_str))
+        envs.append(env_processing.make_env(env_str, args.corridor_length))
+        eval_envs.append(env_processing.make_env(env_str, args.corridor_length))
     device = torch.device(args.device)
     set_global_seed(args.seed, *(envs + eval_envs))
 
@@ -458,6 +464,8 @@ def run_experiment(args):
         f"model={args.model}_envs={','.join(args.envs)}_obs_embed={args.obs_embed}_a_embed={args.a_embed}_in_embed={args.in_embed}_context={args.context}_heads={args.heads}_layers={args.layers}_"
         f"batch={args.batch}_gate={args.gate}_identity={args.identity}_history={args.history}_pos={args.pos}_bag={args.bag_size}_seed={args.seed}",
     )
+    if "PassiveTMaze-v0" in args.envs:
+        policy_path += f"_corridor={args.corridor_length}"
 
     # Enjoy mode
     if args.render:

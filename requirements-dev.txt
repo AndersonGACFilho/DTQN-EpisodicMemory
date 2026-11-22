@@ -2,5 +2,7 @@
 --extra-index-url https://download.pytorch.org/whl/cpu
 torch==1.11.0+cpu
 numpy==1.22.4
+# Legacy Gym API used by the environment tests (no rendering dependencies).
+gym==0.23.1
 mypy==2.4.1
 pre-commit==4.6.2
