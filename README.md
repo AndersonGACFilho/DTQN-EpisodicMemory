@@ -1,6 +1,6 @@
 # Pluggable kNN Episodic Memory for Deep Q-Learning Agents in Partially Observable Environments
 
-Pluggable kNN episodic memory (from Memorizing Transformers) for DTQN and DRQN agents in partially observable RL. Tests whether agents can use information beyond the context window, evaluated on the Passive T-Maze, Car Flag and Memory Cards.
+Pluggable kNN episodic memory (from Memorizing Transformers) for DTQN and DRQN agents in partially observable RL. The project investigates access to information beyond the context window; the [environment guide](docs/environments.md) describes the tasks, their limitations, and implementation availability.
 
 > **Status:** UFRGS Deep Learning final project (Group 7), due **11/30/2026**. This repository is a fork of [kevslinger/DTQN](https://github.com/kevslinger/DTQN); the original DTQN documentation is kept [below](#deep-transformer-q-networks-for-partially-observable-reinforcement-learning).
 >
@@ -23,11 +23,33 @@ The quantitative target and the tie criterion are defined in #1. Every configura
 
 ## Environments and what each tests
 
-| Environment | What it tests |
-|---|---|
-| **Passive T-Maze** (Ni et al., 2023) | Main experiment: the corridor length controls the dependency distance, below and above K |
-| **Noisy T-Maze** | Whether retrieval still finds the cue when it is less distinct, since stored keys receive no gradient |
-| **Car Flag** and **Memory Cards** | Already solved by DTQN with K = 50, so they check that the memory does not hurt within the window |
+The [standardized environment guide](docs/environments.md) covers every configured
+environment: **35 IDs or YAML configurations across 14 families**, including the
+two new variants. Each entry has a paper-ready purpose and limitation, mechanics,
+observations/actions, rewards/success, configuration, usage, rendering status,
+and sources. Related sizes and observation variants are listed explicitly.
+
+| Project environment | Experimental role | Guide |
+|---|---|---|
+| **Passive T-Maze** | Recall of one instruction across a controlled delay | [Description and limitations](docs/environments.md#passive-t-maze) |
+| **Noisy T-Maze** | Recall with Gaussian corridor distractors | [Description and limitations](docs/environments.md#noisy-t-maze) |
+| **Associative Corridor** | Four class-specific instruction/use pairs, with interleaving allowed | [Description and limitations](docs/environments.md#associative-corridor) |
+| **Car Flag** | Preserve the baseline's performance within the context window | [Description and limitations](docs/environments.md#car-flag) |
+| **Memory Cards** | Preserve the baseline's performance within the context window | [Description and limitations](docs/environments.md#memory-cards) |
+
+**Car Flag and Memory Cards only check for no performance loss within the window
+in this study, using the selected `K = 50` setup.** They are not evidence of
+retrieval beyond that window. These are experimental roles, not newly measured
+results.
+
+The guide also covers [GridVerse](docs/environments.md#gridverse-memory),
+[MiniHack](docs/environments.md#minihack-room),
+[Hallway](docs/environments.md#hallway), and
+[HeavenHell](docs/environments.md#heavenhell). Its availability table distinguishes
+`main`, feature-branch implementations, and optional provider packages; documenting
+a feature does not add its code to this documentation branch. Paper reuse for
+[#2](https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/issues/2) is
+[tracked separately](docs/environments.md#acceptance-criteria-and-paper-handoff).
 
 ## Agents and baselines
 
