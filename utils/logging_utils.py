@@ -3,9 +3,8 @@ import csv
 import os
 from collections import deque
 from datetime import datetime
-from typing import Dict
-
-import wandb
+from pathlib import Path
+from typing import Any, Dict, List, Mapping
 
 
 class RunningAverage:
@@ -30,6 +29,8 @@ def timestamp():
 
 
 def wandb_init(config, group_keys, **kwargs) -> None:
+    import wandb
+
     wandb.init(
         project=config["project_name"],
         group="_".join(
@@ -116,6 +117,8 @@ def get_logger(
     if args.disable_wandb:
         logger = CSVLogger(policy_path, args)
     else:
+        import wandb
+
         wandb_init(
             vars(args),
             [
@@ -135,3 +138,24 @@ def get_logger(
         )
         logger = wandb
     return logger
+
+
+class RecordCSV:
+    """Streaming named records for the standalone experiment workflow."""
+
+    def __init__(self, path: Path, columns: List[str]) -> None:
+        self.file = path.open("w", newline="")
+        self.writer = csv.DictWriter(self.file, fieldnames=columns)
+        self.writer.writeheader()
+
+    def write(self, row: Mapping[str, Any]) -> None:
+        self.writer.writerow(row)
+
+    def close(self) -> None:
+        self.file.close()
+
+    def __enter__(self) -> "RecordCSV":
+        return self
+
+    def __exit__(self, *args: Any) -> None:
+        self.close()

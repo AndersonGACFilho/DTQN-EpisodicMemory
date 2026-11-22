@@ -1,0 +1,12 @@
+{
+  "model": ["DTQN"],
+  "env": ["PassiveTMaze-v0"],
+  "context": [14, 16],
+  "corridor_length": [15, 50],
+  "num_steps": [32000],
+  "prefill_steps": [50000],
+  "bag_size": [0],
+  "training_seed": [69],
+  "eval_episodes": [100],
+  "eval_seed": [10000]
+}

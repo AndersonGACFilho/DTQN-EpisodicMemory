@@ -21,7 +21,7 @@ The following command completed for each of `AssociativeCorridor-v0`,
 `DiscreteCarFlag-v0` and `Memory-5-v0`:
 
 ```bash
-OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 python run.py --model DTQN --envs ENV_ID \
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 python run_legacy.py --model DTQN --envs ENV_ID \
   --corridor-length 12 --context 8 --history 8 --device cpu \
   --num-steps 64 --eval-frequency 32 --eval-episodes 2 --batch 8 \
   --buf-size 2000 --seed 1 --project-name associative-validation-FRESH \

@@ -21,7 +21,7 @@ known-first-party = ["dtqn", "envs", "utils"]
 
 [tool.mypy]
 python_version = "3.10"
-files = ["dtqn", "envs", "utils", "tests", "run.py"]
+files = ["dtqn", "envs", "utils", "tests", "run_legacy.py", "train.py", "eval.py", "train_and_eval.py"]
 strict = true
 warn_unreachable = true
 # torch 1.11 leaves parts of its API unannotated (for example torch.no_grad)
@@ -37,6 +37,7 @@ module = [
     "minihack.*",
     "nle.*",
     "pyglet.*",
+    "scipy.*",
     "wandb.*",
 ]
 ignore_missing_imports = true
@@ -72,7 +73,7 @@ module = [
     "envs.gv_wrapper",
     "envs.memory_cards",
     "envs.mini_hack",
-    "run",
+    "run_legacy",
     "utils",
     "utils.agent_utils",
     "utils.bag",

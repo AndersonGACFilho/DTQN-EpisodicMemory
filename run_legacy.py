@@ -494,7 +494,9 @@ def run_experiment(args):
         f"model={args.model}_envs={','.join(args.envs)}_obs_embed={args.obs_embed}_a_embed={args.a_embed}_in_embed={args.in_embed}_context={args.context}_heads={args.heads}_layers={args.layers}_"
         f"batch={args.batch}_gate={args.gate}_identity={args.identity}_history={args.history}_pos={args.pos}_bag={args.bag_size}_seed={args.seed}",
     )
-    if {"PassiveTMaze-v0", "NoisyTMaze-v0", "AssociativeCorridor-v0"}.intersection(args.envs):
+    if {"PassiveTMaze-v0", "NoisyTMaze-v0", "AssociativeCorridor-v0"}.intersection(
+        args.envs
+    ):
         policy_path += f"_corridor={args.corridor_length}"
     if "NoisyTMaze-v0" in args.envs:
         policy_path += f"_noise={args.noise_level:g}_std={args.noise_std:g}"

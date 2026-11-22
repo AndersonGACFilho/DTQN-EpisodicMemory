@@ -38,7 +38,8 @@ def make_env(
         print("Loading using gym.make")
         kwargs = (
             {"corridor_length": corridor_length}
-            if id_or_path in {"PassiveTMaze-v0", "NoisyTMaze-v0", "AssociativeCorridor-v0"}
+            if id_or_path
+            in {"PassiveTMaze-v0", "NoisyTMaze-v0", "AssociativeCorridor-v0"}
             else {}
         )
         if id_or_path == "NoisyTMaze-v0":

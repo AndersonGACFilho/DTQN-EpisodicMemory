@@ -131,8 +131,9 @@ class DqnAgent:
         return torch.argmax(q_values).item()
 
     def observe(self, obs, action, reward, done) -> None:
+        self.context.add_transition(obs, action, reward, done)
         if self.train_mode == TrainMode.TRAIN:
-            self.replay_buffer.store(obs, action, reward, done)
+            self.replay_buffer.store(obs, action, reward, done, self.context.timestep)
 
     def context_reset(self, obs: np.ndarray) -> None:
         self.context.reset(obs)

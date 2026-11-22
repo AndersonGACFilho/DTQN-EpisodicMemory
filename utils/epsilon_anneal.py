@@ -3,7 +3,7 @@ from abc import ABC, abstractmethod
 
 class EpsilonAnneal(ABC):
     @abstractmethod
-    def anneal(self):
+    def anneal(self) -> None:
         pass
 
 
@@ -11,7 +11,7 @@ class Constant(EpsilonAnneal):
     def __init__(self, start):
         self.val = start
 
-    def anneal(self):
+    def anneal(self) -> None:
         pass
 
 
@@ -30,5 +30,5 @@ class LinearAnneal(EpsilonAnneal):
         self.min = end
         self.duration = duration
 
-    def anneal(self):
+    def anneal(self) -> None:
         self.val = max(self.min, self.val - (self.val - self.min) / self.duration)
