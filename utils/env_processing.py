@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Mapping, Union
 
 import gym
 import numpy as np
@@ -32,7 +32,7 @@ def make_env(id_or_path: str, corridor_length: int = 10) -> GymEnvironment:
         print("Loading using gym.make")
         kwargs = (
             {"corridor_length": corridor_length}
-            if id_or_path == "PassiveTMaze-v0"
+            if id_or_path in {"PassiveTMaze-v0", "AssociativeCorridor-v0"}
             else {}
         )
         env = gym.make(id_or_path, **kwargs)
@@ -58,6 +58,17 @@ def make_env(id_or_path: str, corridor_length: int = 10) -> GymEnvironment:
         env = TimeLimit(GridVerseWrapper(env), max_episode_steps=250)
 
     return env
+
+
+def get_episode_success(
+    info: Mapping[str, object],
+    episode_return: float,
+    require_explicit_success: bool = False,
+) -> bool:
+    """Use explicit success for opt-in tasks; preserve legacy return-based success."""
+    if require_explicit_success:
+        return bool(info.get("is_success", False))
+    return bool(info.get("is_success", False) or episode_return > 0)
 
 
 class ObsType(Enum):
