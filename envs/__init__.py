@@ -50,6 +50,11 @@ register(
     entry_point="envs.noisy_tmaze:NoisyTMaze",
 )
 
+register(
+    id="AssociativeCorridor-v0",
+    entry_point="envs.associative_corridor:AssociativeCorridor",
+)
+
 
 ############
 # CAR FLAG #

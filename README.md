@@ -104,7 +104,7 @@ python run.py --model DTQN --envs PassiveTMaze-v0 --corridor-length 10 \
   --eval-episodes 10 --seed 1 --project-name tmaze-smoke --disable-wandb --verbose
 ```
 
-`--corridor-length` defaults to 10 and also configures Noisy T-Maze below. The episode
+`--corridor-length` defaults to 10 and also configures Noisy T-Maze and Associative Corridor. The episode
 lasts `corridor_length + 1` steps; increase the length beyond `--context` to test
 dependencies outside the observation window. This runs ordinary DTQN; kNN memory
 integration is tracked in #7. No additional runtime packages are required beyond
@@ -183,6 +183,55 @@ Tests cover #20's configurable selection (AC1), exact zero-noise equivalence
 at noise levels 0, 0.25, 0.5 and 1 with standard deviations 0.1 and 1 (AC3).
 Reviewed PR/merge into `main` is a separate completion requirement; local checks
 do not satisfy that requirement by themselves.
+
+## Running Associative Corridor
+
+`AssociativeCorridor-v0` is an additional recall task with four independent
+class/direction associations. Each episode contains one instruction and one use
+of each class. Instructions and queries can be interleaved, but an instruction
+always precedes its own query. Directions and event positions change on reset.
+The final position is always a query; unoccupied positions are blank corridor.
+
+Observations are six `float32` values: `[A, B, C, D, is_query, direction]`.
+The first four values are a one-hot class code, or all zeros in blank corridor.
+
+| Situation | Example |
+|---|---|
+| Instruction: B means Down | `[0, 1, 0, 0, 0, -1]` |
+| Blank corridor | `[0, 0, 0, 0, 0, 0]` |
+| Query: which direction for B? | `[0, 1, 0, 0, 1, 0]` |
+
+Direction is `-1`/`+1` only on instructions. Queries do not reveal the answer.
+Use Right (0) at instructions and blanks, and Up (1) or Down (3) at queries.
+A correct query gives +1 and advances; correct corridor actions give 0 and
+advance. Any incorrect action, including Left (2), ends the episode with reward
+0. A successful episode answers all four queries and returns 4. Earlier correct
+answers still contribute to return when a later action fails, but that episode
+is counted as a failure. Only this environment opts into that explicit success
+rule; existing environments retain their evaluation behavior.
+
+`--corridor-length` is the number of decision positions: minimum 8, default 10.
+A successful episode takes exactly that many steps (unlike Passive T-Maze's
+`L + 1`). Random positions allow different recall delays; a longer corridor does
+not guarantee that every instruction/query pair exceeds the context window.
+The `instructions` and `queries` dictionaries on `env.unwrapped` expose event
+positions for inspecting a seeded schedule; the agent receives observations only.
+
+```bash
+python run.py --model DTQN --envs AssociativeCorridor-v0 --corridor-length 100 \
+  --context 14 --history 14 --device cpu --num-steps 2000 \
+  --eval-frequency 500 --eval-episodes 10 --seed 1 \
+  --project-name associative-smoke --disable-wandb --verbose
+
+python -m unittest tests.test_associative_corridor -v
+```
+
+Run this separately from environments with two-dimensional observations.
+Output files under `policies/<project-name>/AssociativeCorridor-v0/` include
+`_corridor=<L>`. Use a fresh project name for a fresh smoke run. No new packages
+or graphical renderer are included. This runs ordinary DTQN; kNN integration
+remains #7. The task tests class-dependent recall, not the necessity of kNN over
+every other memory architecture.
 
 ## Project management
 
