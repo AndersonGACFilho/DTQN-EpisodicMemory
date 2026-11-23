@@ -21,22 +21,22 @@ two classic POMDPs. Families share a description, while their tables enumerate
 every size or observation variant. Arbitrary environments in a user's global Gym
 registry are outside this inventory.
 
-| Family | Choices | Code availability in the checked snapshot |
-|---|---:|---|
-| [Passive T-Maze](#passive-t-maze) | 1 | `main`, local implementation |
-| [Noisy T-Maze](#noisy-t-maze) | 1 | `main`, local implementation |
-| [Associative Corridor](#associative-corridor) | 1 | `main`, local implementation |
-| [Car Flag](#car-flag) | 1 | `main`, local implementation |
-| [Memory Cards](#memory-cards) | 1 | `main`, local implementation |
-| [GridVerse Memory](#gridverse-memory) | 6 | `main`, YAML configurations and optional provider |
-| [GridVerse Memory Four Rooms](#gridverse-memory-four-rooms) | 2 | `main`, YAML configurations and optional provider |
-| [MiniHack Room](#minihack-room) | 6 | `main`, registrations and optional provider |
-| [MiniHack Dark Room](#minihack-dark-room) | 6 | `main`, registrations and optional provider |
-| [MiniHack MazeWalk](#minihack-mazewalk) | 3 | `main`, registrations and optional provider |
-| [MiniHack Mapped Maze](#minihack-mapped-maze) | 3 | `main`, registrations and optional provider |
-| [MiniHack Custom Maze](#minihack-custom-maze) | 2 | `main`, level definition and optional provider |
-| [Hallway](#hallway) | 1 | Optional `gym_pomdps` registration referenced by the README |
-| [HeavenHell](#heavenhell) | 1 | Optional `gym_pomdps` registration referenced by the README |
+| Family                                                      | Choices | Code availability in the checked snapshot                   |
+|-------------------------------------------------------------|--------:|-------------------------------------------------------------|
+| [Passive T-Maze](#passive-t-maze)                           |       1 | `main`, local implementation                                |
+| [Noisy T-Maze](#noisy-t-maze)                               |       1 | `main`, local implementation                                |
+| [Associative Corridor](#associative-corridor)               |       1 | `main`, local implementation                                |
+| [Car Flag](#car-flag)                                       |       1 | `main`, local implementation                                |
+| [Memory Cards](#memory-cards)                               |       1 | `main`, local implementation                                |
+| [GridVerse Memory](#gridverse-memory)                       |       6 | `main`, YAML configurations and optional provider           |
+| [GridVerse Memory Four Rooms](#gridverse-memory-four-rooms) |       2 | `main`, YAML configurations and optional provider           |
+| [MiniHack Room](#minihack-room)                             |       6 | `main`, registrations and optional provider                 |
+| [MiniHack Dark Room](#minihack-dark-room)                   |       6 | `main`, registrations and optional provider                 |
+| [MiniHack MazeWalk](#minihack-mazewalk)                     |       3 | `main`, registrations and optional provider                 |
+| [MiniHack Mapped Maze](#minihack-mapped-maze)               |       3 | `main`, registrations and optional provider                 |
+| [MiniHack Custom Maze](#minihack-custom-maze)               |       2 | `main`, level definition and optional provider              |
+| [Hallway](#hallway)                                         |       1 | Optional `gym_pomdps` registration referenced by the README |
+| [HeavenHell](#heavenhell)                                   |       1 | Optional `gym_pomdps` registration referenced by the README |
 
 `main` in this table means the checked source snapshot, not a promise that optional
 dependencies are installed. All five project tasks are available from one current
@@ -551,10 +551,10 @@ verified with the local dependency stack.
 
 These files are present on `main` and require the optional [GridVerse provider][gv-package].
 
-| Configuration filename | Grid shape | Room layout | Repository TimeLimit |
-|---|---|---|---:|
-| `gv_memory_four_rooms.7x7.yaml` | 7 x 7 | 2 x 2 | 250 |
-| `gv_memory_four_rooms.9x9.yaml` | 9 x 9 | 2 x 2 | 250 |
+| Configuration filename          | Grid shape | Room layout | Repository TimeLimit |
+|---------------------------------|------------|-------------|---------------------:|
+| `gv_memory_four_rooms.7x7.yaml` | 7 x 7      | 2 x 2       |                  250 |
+| `gv_memory_four_rooms.9x9.yaml` | 9 x 9      | 2 x 2       |                  250 |
 
 ### Paper-ready description
 
@@ -636,14 +636,14 @@ Sources: [navigation defaults][mh-navigation], [rewards and crop handling][mh-ba
 
 Registered on `main`; requires the optional MiniHack/NLE stack above.
 
-| Repository ID | Provider ID | Observation | Outer cap / provider cap |
-|---|---|---|---|
-| `MH-Room-5-v0` | `MiniHack-Room-5x5-v0` | Glyphs, 9 x 9 cells | 100 / 100 |
-| `MH-Room-5-v1` | `MiniHack-Room-5x5-v0` | Glyphs, 3 x 3 cells | 100 / 100 |
-| `MH-Room-5-v2` | `MiniHack-Room-5x5-v0` | Pixels, 9 x 9 cells | 100 / 100 |
-| `MH-Room-15-v0` | `MiniHack-Room-15x15-v0` | Glyphs, 9 x 9 cells | 300 / 300 |
-| `MH-Room-15-v1` | `MiniHack-Room-15x15-v0` | Glyphs, 3 x 3 cells | 300 / 300 |
-| `MH-Room-15-v2` | `MiniHack-Room-15x15-v0` | Pixels, 9 x 9 cells | 300 / 300 |
+| Repository ID   | Provider ID              | Observation         | Outer cap / provider cap |
+|-----------------|--------------------------|---------------------|--------------------------|
+| `MH-Room-5-v0`  | `MiniHack-Room-5x5-v0`   | Glyphs, 9 x 9 cells | 100 / 100                |
+| `MH-Room-5-v1`  | `MiniHack-Room-5x5-v0`   | Glyphs, 3 x 3 cells | 100 / 100                |
+| `MH-Room-5-v2`  | `MiniHack-Room-5x5-v0`   | Pixels, 9 x 9 cells | 100 / 100                |
+| `MH-Room-15-v0` | `MiniHack-Room-15x15-v0` | Glyphs, 9 x 9 cells | 300 / 300                |
+| `MH-Room-15-v1` | `MiniHack-Room-15x15-v0` | Glyphs, 3 x 3 cells | 300 / 300                |
+| `MH-Room-15-v2` | `MiniHack-Room-15x15-v0` | Pixels, 9 x 9 cells | 300 / 300                |
 
 ### Paper-ready description
 
@@ -696,14 +696,14 @@ wrapper, and compatibility with the pinned stack was not exercised here.
 
 Registered on `main`; requires the optional MiniHack/NLE stack.
 
-| Repository ID | Provider ID | Observation | Outer cap / provider cap |
-|---|---|---|---|
-| `MH-DarkRoom-5-v0` | `MiniHack-Room-Dark-5x5-v0` | Glyphs, 9 x 9 cells | 100 / 100 |
-| `MH-DarkRoom-5-v1` | `MiniHack-Room-Dark-5x5-v0` | Glyphs, 3 x 3 cells | 100 / 100 |
-| `MH-DarkRoom-5-v2` | `MiniHack-Room-Dark-5x5-v0` | Pixels, 9 x 9 cells | 100 / 100 |
-| `MH-DarkRoom-15-v0` | `MiniHack-Room-Dark-15x15-v0` | Glyphs, 9 x 9 cells | 300 / 300 |
-| `MH-DarkRoom-15-v1` | `MiniHack-Room-Dark-15x15-v0` | Glyphs, 3 x 3 cells | 300 / 300 |
-| `MH-DarkRoom-15-v2` | `MiniHack-Room-Dark-15x15-v0` | Pixels, 9 x 9 cells | 300 / 300 |
+| Repository ID       | Provider ID                   | Observation         | Outer cap / provider cap |
+|---------------------|-------------------------------|---------------------|--------------------------|
+| `MH-DarkRoom-5-v0`  | `MiniHack-Room-Dark-5x5-v0`   | Glyphs, 9 x 9 cells | 100 / 100                |
+| `MH-DarkRoom-5-v1`  | `MiniHack-Room-Dark-5x5-v0`   | Glyphs, 3 x 3 cells | 100 / 100                |
+| `MH-DarkRoom-5-v2`  | `MiniHack-Room-Dark-5x5-v0`   | Pixels, 9 x 9 cells | 100 / 100                |
+| `MH-DarkRoom-15-v0` | `MiniHack-Room-Dark-15x15-v0` | Glyphs, 9 x 9 cells | 300 / 300                |
+| `MH-DarkRoom-15-v1` | `MiniHack-Room-Dark-15x15-v0` | Glyphs, 3 x 3 cells | 300 / 300                |
+| `MH-DarkRoom-15-v2` | `MiniHack-Room-Dark-15x15-v0` | Pixels, 9 x 9 cells | 300 / 300                |
 
 ### Paper-ready description
 
@@ -810,11 +810,11 @@ python train.py --model DTQN --env MH-Maze-9-v0 \
 Registered on `main`; requires optional MiniHack/NLE. The pixel registration has
 an existing provider mismatch, recorded explicitly below rather than corrected.
 
-| Repository ID | Actual provider ID | Observation | Outer cap / provider cap |
-|---|---|---|---|
-| `MH-MazeMap-9-v0` | `MiniHack-MazeWalk-Mapped-9x9-v0` | Glyphs, 9 x 9 cells | 180 / 200 |
-| `MH-MazeMap-9-v1` | `MiniHack-MazeWalk-Mapped-9x9-v0` | Glyphs, 3 x 3 cells | 180 / 200 |
-| `MH-MazeMap-9-v2` | `MiniHack-MazeWalk-9x9-v0` | Pixels, 9 x 9 cells | 180 / 200 |
+| Repository ID     | Actual provider ID                | Observation         | Outer cap / provider cap |
+|-------------------|-----------------------------------|---------------------|--------------------------|
+| `MH-MazeMap-9-v0` | `MiniHack-MazeWalk-Mapped-9x9-v0` | Glyphs, 9 x 9 cells | 180 / 200                |
+| `MH-MazeMap-9-v1` | `MiniHack-MazeWalk-Mapped-9x9-v0` | Glyphs, 3 x 3 cells | 180 / 200                |
+| `MH-MazeMap-9-v2` | `MiniHack-MazeWalk-9x9-v0`        | Pixels, 9 x 9 cells | 180 / 200                |
 
 ### Paper-ready description
 
@@ -867,10 +867,10 @@ python train.py --model DTQN --env MH-MazeMap-9-v1 \
 Registered on `main`; requires optional MiniHack/NLE. Case matters: the IDs use
 lowercase `maze`.
 
-| Repository ID | Actual provider | Observation | Outer cap / provider cap |
-|---|---|---|---|
-| `MH-maze-v1` | `MiniHack-Navigation-Custom-v0` with local level text | Glyphs, 3 x 3 cells | 180 / 100 |
-| `MH-maze-v2` | `MiniHack-Navigation-Custom-v0` with local level text | Pixels, 9 x 9 cells | 180 / 100 |
+| Repository ID | Actual provider                                       | Observation         | Outer cap / provider cap |
+|---------------|-------------------------------------------------------|---------------------|--------------------------|
+| `MH-maze-v1`  | `MiniHack-Navigation-Custom-v0` with local level text | Glyphs, 3 x 3 cells | 180 / 100                |
+| `MH-maze-v2`  | `MiniHack-Navigation-Custom-v0` with local level text | Pixels, 9 x 9 cells | 180 / 100                |
 
 ### Paper-ready description
 
@@ -1075,11 +1075,11 @@ This guide is the linked documentation deliverable for [issue #2][issue2].
 Coverage extends beyond its original four tasks to the complete configured
 inventory and the new Associative Corridor variant.
 
-| Criterion | Documentation treatment |
-|---|---|
-| AC1: each environment's purpose and limitation | Every family has the same two explicitly labeled sentences; all configured variants are enumerated under their applicable family. |
-| AC2: Car Flag and Memory Cards only check for no loss within the window | Both entries and the README explicitly state this role for the selected K = 50 configuration. |
-| AC3: reuse in the experimental setup section (#15) | **Deferred at the user's request.** Paper-ready wording is provided, but no Overleaf or paper setup section has been changed. |
+| Criterion                                                               | Documentation treatment                                                                                                           |
+|-------------------------------------------------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
+| AC1: each environment's purpose and limitation                          | Every family has the same two explicitly labeled sentences; all configured variants are enumerated under their applicable family. |
+| AC2: Car Flag and Memory Cards only check for no loss within the window | Both entries and the README explicitly state this role for the selected K = 50 configuration.                                     |
+| AC3: reuse in the experimental setup section (#15)                      | **Deferred at the user's request.** Paper-ready wording is provided, but no Overleaf or paper setup section has been changed.     |
 
 For later paper reuse, copy each applicable **What it tests** and **Limitation**
 sentence together and retain its reference. The implementation details and usage

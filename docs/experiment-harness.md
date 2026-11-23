@@ -105,61 +105,61 @@ bootstrapping convention. Actions must be discrete, with at most 256 choices
 
 ## Operational flags
 
-| Script | Flag | Default | Effect |
-|---|---|---|---|
-| Outer | `--config PATH` | Required for a new batch | Flat scientific grid |
-| Outer | `--project-name NAME` | JSON filename stem | Output subdirectory |
-| Outer | `--output-root PATH` | `results` | Batch root |
-| All | `--device DEVICE` | `cpu` | CPU or CUDA device; never selected implicitly |
-| All | `--verbose` | Off | Extra single-stage output; outer redirects it to process logs |
-| Outer | `--dry-run` | Off | Print all expanded combinations/errors; create no batch |
-| Outer | `--resume BATCH` | Off | Reuse completed stages, retry failures with new attempt folders |
-| Outer | `--aggregate-only BATCH` | Off | Recompute tables from saved per-seed metrics; no model load/training |
-| Train/eval | `--output-dir PATH` | Required | New/empty stage output directory |
-| Eval | `--model-path PATH` | Required | Final inference bundle from `train.py` |
-| Eval | `--eval-episodes N` | `100` | Fixed greedy episode count |
-| Eval | `--eval-seed N` | `10000` | Evaluation seed, independent of the training seed |
+| Script     | Flag                     | Default                  | Effect                                                               |
+|------------|--------------------------|--------------------------|----------------------------------------------------------------------|
+| Outer      | `--config PATH`          | Required for a new batch | Flat scientific grid                                                 |
+| Outer      | `--project-name NAME`    | JSON filename stem       | Output subdirectory                                                  |
+| Outer      | `--output-root PATH`     | `results`                | Batch root                                                           |
+| All        | `--device DEVICE`        | `cpu`                    | CPU or CUDA device; never selected implicitly                        |
+| All        | `--verbose`              | Off                      | Extra single-stage output; outer redirects it to process logs        |
+| Outer      | `--dry-run`              | Off                      | Print all expanded combinations/errors; create no batch              |
+| Outer      | `--resume BATCH`         | Off                      | Reuse completed stages, retry failures with new attempt folders      |
+| Outer      | `--aggregate-only BATCH` | Off                      | Recompute tables from saved per-seed metrics; no model load/training |
+| Train/eval | `--output-dir PATH`      | Required                 | New/empty stage output directory                                     |
+| Eval       | `--model-path PATH`      | Required                 | Final inference bundle from `train.py`                               |
+| Eval       | `--eval-episodes N`      | `100`                    | Fixed greedy episode count                                           |
+| Eval       | `--eval-seed N`          | `10000`                  | Evaluation seed, independent of the training seed                    |
 
 Scientific JSON keys below map to `train.py` flags by replacing underscores with
 hyphens. They cannot be supplied as overrides to `train_and_eval.py`.
 
-| JSON key | Default | Effect |
-|---|---|---|
-| `model` | `DTQN` | Agent/network name: DTQN, DTQN-bag, DTQN-kNN, DTQN-kNN-cached, DRQN, ADRQN, DARQN, DQN |
-| `env` | `DiscreteCarFlag-v0` | One environment ID or supported GridVerse YAML filename |
-| `corridor_length` | `10` | Passive/Noisy length (>=1) or associative decision positions (>=8) |
-| `noise_level` | `0.5` | Noisy T-Maze distractor probability [0,1] |
-| `noise_std` | `0.1` | Positive Gaussian distractor standard deviation |
-| `num_steps` | `2000000` | Exact number of training interactions after prefill |
-| `prefill_steps` | `50000` | Minimum random prefill interactions; finishes the last episode |
-| `training_seed` | `1` | Independent training/environment/network seed |
-| `eval_seed` | `10000` | Shared evaluation seed for comparisons |
-| `eval_episodes` | `100` | Greedy episodes per trained final model |
-| `tuf` | `10000` | Gradient updates between target-network copies |
-| `lr` | `0.0003` | Adam learning rate |
-| `batch` | `32` | Replay batch size |
-| `buf_size` | `500000` | Replay allocation in padded transitions; must fit at least batch+2 episodes |
-| `context` | `50` | Observation window; forced to 1 for DQN |
-| `history` | `50` | Intermediate Q targets; clipped to context |
-| `obs_embed` | `8` | Embedding width per discrete observation element |
-| `a_embed` | `0` | Action embedding width (0 disables it) |
-| `in_embed` | `128` | Network width; DTQN width must divide evenly among heads |
-| `max_episode_steps` | `-1` | Infer horizon, or apply an explicit positive time limit |
-| `heads` | `8` | Transformer attention heads |
-| `layers` | `2` | Transformer blocks |
-| `dropout` | `0.0` | Transformer dropout in [0,1) |
-| `discount` | `0.99` | Q-learning discount in [0,1] |
-| `gate` | `res` | Transformer combination: res or gru |
-| `identity` | `false` | Identity map reordering; standalone CLI uses `--identity` |
-| `pos` | `learned` | Position encoding: learned, sin, none |
-| `bag_size` | `0` | Existing persistent observation bag; DTQN only, not kNN episodic memory |
-| `memory_enabled` | `true` | Active for DTQN-kNN and DTQN-kNN-cached; false selects the original DTQN network and agent |
-| `memory_size` | `256` | External FIFO capacity in timesteps per episode |
-| `memory_top_k` | `8` | Retrieved neighbours per query/head |
-| `memory_layer` | `-1` | Zero-based block index; -1 selects the last block |
-| `memory_gate` | `true` | Mix local and memory attention; false uses the local result |
-| `memory_gate_bias_init` | `0.0` | Initial per-head sigmoid gate bias |
-| `memory_stop_grad` | `true` | Detach prefix K/V; false enables differentiable prefixes only for DTQN-kNN; cached requires true |
+| JSON key                | Default              | Effect                                                                                           |
+|-------------------------|----------------------|--------------------------------------------------------------------------------------------------|
+| `model`                 | `DTQN`               | Agent/network name: DTQN, DTQN-bag, DTQN-kNN, DTQN-kNN-cached, DRQN, ADRQN, DARQN, DQN           |
+| `env`                   | `DiscreteCarFlag-v0` | One environment ID or supported GridVerse YAML filename                                          |
+| `corridor_length`       | `10`                 | Passive/Noisy length (>=1) or associative decision positions (>=8)                               |
+| `noise_level`           | `0.5`                | Noisy T-Maze distractor probability [0,1]                                                        |
+| `noise_std`             | `0.1`                | Positive Gaussian distractor standard deviation                                                  |
+| `num_steps`             | `2000000`            | Exact number of training interactions after prefill                                              |
+| `prefill_steps`         | `50000`              | Minimum random prefill interactions; finishes the last episode                                   |
+| `training_seed`         | `1`                  | Independent training/environment/network seed                                                    |
+| `eval_seed`             | `10000`              | Shared evaluation seed for comparisons                                                           |
+| `eval_episodes`         | `100`                | Greedy episodes per trained final model                                                          |
+| `tuf`                   | `10000`              | Gradient updates between target-network copies                                                   |
+| `lr`                    | `0.0003`             | Adam learning rate                                                                               |
+| `batch`                 | `32`                 | Replay batch size                                                                                |
+| `buf_size`              | `500000`             | Replay allocation in padded transitions; must fit at least batch+2 episodes                      |
+| `context`               | `50`                 | Observation window; forced to 1 for DQN                                                          |
+| `history`               | `50`                 | Intermediate Q targets; clipped to context                                                       |
+| `obs_embed`             | `8`                  | Embedding width per discrete observation element                                                 |
+| `a_embed`               | `0`                  | Action embedding width (0 disables it)                                                           |
+| `in_embed`              | `128`                | Network width; DTQN width must divide evenly among heads                                         |
+| `max_episode_steps`     | `-1`                 | Infer horizon, or apply an explicit positive time limit                                          |
+| `heads`                 | `8`                  | Transformer attention heads                                                                      |
+| `layers`                | `2`                  | Transformer blocks                                                                               |
+| `dropout`               | `0.0`                | Transformer dropout in [0,1)                                                                     |
+| `discount`              | `0.99`               | Q-learning discount in [0,1]                                                                     |
+| `gate`                  | `res`                | Transformer combination: res or gru                                                              |
+| `identity`              | `false`              | Identity map reordering; standalone CLI uses `--identity`                                        |
+| `pos`                   | `learned`            | Position encoding: learned, sin, none                                                            |
+| `bag_size`              | `0`                  | Existing persistent observation bag; DTQN only, not kNN episodic memory                          |
+| `memory_enabled`        | `true`               | Active for DTQN-kNN and DTQN-kNN-cached; false selects the original DTQN network and agent       |
+| `memory_size`           | `256`                | External FIFO capacity in timesteps per episode                                                  |
+| `memory_top_k`          | `8`                  | Retrieved neighbours per query/head                                                              |
+| `memory_layer`          | `-1`                 | Zero-based block index; -1 selects the last block                                                |
+| `memory_gate`           | `true`               | Mix local and memory attention; false uses the local result                                      |
+| `memory_gate_bias_init` | `0.0`                | Initial per-head sigmoid gate bias                                                               |
+| `memory_stop_grad`      | `true`               | Detach prefix K/V; false enables differentiable prefixes only for DTQN-kNN; cached requires true |
 
 Use `--no-memory-enabled`, `--no-memory-gate` or `--no-memory-stop-grad` to
 disable these booleans in `train.py`; the sweep passes JSON false values correctly.
@@ -309,12 +309,12 @@ used after code changes.
 
 ## Acceptance checks
 
-| #9 criterion | Implementation / validation |
-|---|---|
-| AC1: one command, N seeds, CSV per seed | JSON Cartesian runner; isolated `result.csv`; multi-job CPU smoke and process integration tests |
-| AC2: mean, std, 95% CI per configuration | Saved-only aggregation; tested sample std and known Student-t interval, single/missing seeds and attempt counting |
-| AC3: wall clock and CUDA peak | Separate synchronized phase meters and combined columns; real CPU/CUDA runs and mocked CUDA API/order checks |
-| AC4: configured fixed greedy episodes | Final bundle loaded by evaluation-only process; episode counts, epsilon=0, deterministic replay and unchanged weights/replay tested |
+| #9 criterion                             | Implementation / validation                                                                                                         |
+|------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------|
+| AC1: one command, N seeds, CSV per seed  | JSON Cartesian runner; isolated `result.csv`; multi-job CPU smoke and process integration tests                                     |
+| AC2: mean, std, 95% CI per configuration | Saved-only aggregation; tested sample std and known Student-t interval, single/missing seeds and attempt counting                   |
+| AC3: wall clock and CUDA peak            | Separate synchronized phase meters and combined columns; real CPU/CUDA runs and mocked CUDA API/order checks                        |
+| AC4: configured fixed greedy episodes    | Final bundle loaded by evaluation-only process; episode counts, epsilon=0, deterministic replay and unchanged weights/replay tested |
 
 Run `python -m unittest discover -s tests`, `mypy`, and `pre-commit run --all-files`.
 Reviewed PR and merge into `main` remain separate requirements of the issue.

@@ -4,11 +4,11 @@ Validated locally on 2026-11-22, based on Passive T-Maze commit `d8a6a99`.
 
 ## Acceptance criteria
 
-| Criterion | Evidence | Local result |
-|---|---|---|
-| AC1: select/configure the variant | `NoisyTMaze-v0` registration, factory forwarding tests, and an actual `run_legacy.py` CPU training run with `--noise-level 0.5 --noise-std 0.1` | Passed |
-| AC2: zero noise matches Passive T-Maze | Equal spaces and seeded observations/rewards/termination/success across 30 episodes each at lengths 1, 10 and 300, including correct routes, wrong branches and random movements | Passed |
-| AC3: oracle succeeds at every supported noise level | 1,000 observation-driven oracle episodes per combination of probability `{0, 0.25, 0.5, 1}` and standard deviation `{0.1, 1}`: **8,000/8,000 successes**; additional length 1/300 checks | Passed |
+| Criterion                                           | Evidence                                                                                                                                                                                 | Local result |
+|-----------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|--------------|
+| AC1: select/configure the variant                   | `NoisyTMaze-v0` registration, factory forwarding tests, and an actual `run_legacy.py` CPU training run with `--noise-level 0.5 --noise-std 0.1`                                          | Passed       |
+| AC2: zero noise matches Passive T-Maze              | Equal spaces and seeded observations/rewards/termination/success across 30 episodes each at lengths 1, 10 and 300, including correct routes, wrong branches and random movements         | Passed       |
+| AC3: oracle succeeds at every supported noise level | 1,000 observation-driven oracle episodes per combination of probability `{0, 0.25, 0.5, 1}` and standard deviation `{0.1, 1}`: **8,000/8,000 successes**; additional length 1/300 checks | Passed       |
 
 The oracle result extends to the entire supported parameter range: its initial
 cue and junction observations are always clean, and noise never changes movement
