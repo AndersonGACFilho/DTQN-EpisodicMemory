@@ -320,7 +320,9 @@ class-dependent recall, not the necessity of kNN over every other memory archite
 Comparisons follow [rliable](https://github.com/google-research/rliable)
 (Agarwal et al., NeurIPS 2021): several training seeds, aggregate metrics with
 bootstrap confidence intervals, performance profiles, probability of improvement
-and learning curves with uncertainty bands.
+and learning curves with uncertainty bands. The
+[pipeline guide](docs/rliable-evaluation.md) maps the modules and has flow and
+sequence diagrams.
 
 ### Run the grid
 
@@ -328,7 +330,9 @@ and learning curves with uncertainty bands.
 source of truth for the grid: `parameters` lists `RunConfig` values (full
 Cartesian product), `train_seeds` the number of seeds (1..N), `eval_episodes`,
 `eval_interval` (training steps between evaluations) and `comparisons`
-(`[candidate, baseline]` models). Check that its hyperparameters match the runs you
+(`[candidate, baseline]` models). `parameters` must set `model`, `env` and
+`num_steps`, and must not set `training_seed`, `eval_seed` or `eval_episodes`,
+which the protocol derives. Check that its hyperparameters match the runs you
 want to reproduce before launching it.
 
 ```bash
@@ -345,6 +349,29 @@ python run_rliable_grid.py --grid experiments/rliable_tmaze.json --only training
 # Use 10 seeds instead of the grid's 5
 python run_rliable_grid.py --grid experiments/rliable_tmaze.json --seeds 10
 ```
+
+| `run_rliable_grid.py` option | Default | Effect |
+|---|---|---|
+| `--grid` | `experiments/rliable_tmaze.json` | Grid JSON |
+| `--seeds` | `train_seeds` from the grid | Number of training seeds (1..N) |
+| `--only KEY=VALUE` | none | Run only jobs whose `RunConfig` field matches; repeat to combine |
+| `--raw-dir` | `results/raw` | Where records and metadata are written |
+| `--artifacts-dir` | `results/runs` | Where models, logs and trajectories are written |
+| `--device` | `cpu` | PyTorch device |
+| `--dry-run` | off | List the selected jobs and whether each is complete |
+
+To check the pipeline before the full grid, run the CPU smoke test (2 models x 2
+seeds, 3,000 steps, about 6 minutes) into its own folders:
+
+```bash
+python run_rliable_grid.py --grid experiments/rliable_smoke.json \
+  --raw-dir results/smoke/raw --artifacts-dir results/smoke/runs
+python -m analysis.rliable_report --grid experiments/rliable_smoke.json \
+  --raw-dir results/smoke/raw --output-dir results/smoke
+```
+
+The smoke grid fits the whole episode in the context window, so both models
+solve it; it checks the pipeline, not the method.
 
 Each run trains with the existing `train.py` code path and evaluates the greedy
 policy every `eval_interval` steps and at the final step, always on the same
@@ -366,6 +393,19 @@ starts. Add a junction reader to `SIDE_READERS` in
 [`evaluation/sides.py`](evaluation/sides.py) for a new environment, and a model
 name to the grid for a new model.
 
+**Failures and resuming.** A run that fails is logged with its traceback, the
+remaining runs continue, and the script exits with status 1. Repeat the command
+to retry: only runs without both result files run again. The run id is derived
+from the full configuration (including `eval_interval`), so changing any
+hyperparameter creates new runs instead of reusing old results. Changing the code
+does not: finished runs are kept, and the report lists every code version it
+read.
+
+**Several machines.** Give each machine a non-overlapping `--only` filter, for
+example one `training_seed` per machine, and never run the same job in two
+processes at once. Then copy every machine's `results/raw/` into one folder
+before generating the report; `results/runs/` is not needed for it.
+
 ### Generate the report
 
 ```bash
@@ -382,6 +422,18 @@ has no results. It writes PNG and PDF figures to `results/figures/`
 `side_bias.csv`). Scores are final success rates, already in [0, 1]. An algorithm
 is a (model, context, layers) combination and a task an (environment, corridor
 length) combination; score matrices have shape `(n_seeds, n_tasks)`.
+
+| `analysis.rliable_report` option | Default | Effect |
+|---|---|---|
+| `--grid` | required | Grid JSON; only its runs are read |
+| `--seeds` | `train_seeds` from the grid | Must match the `--seeds` used to run the grid |
+| `--raw-dir` | `results/raw` | Folder with the run records |
+| `--output-dir` | `results` | Parent of `figures/` and `summary/` |
+| `--reps` | `2000` | Bootstrap replications; use `50000` for final results |
+
+Bootstrap intervals use a fixed random seed, so repeating the report on the same
+records gives the same numbers. When the runs come from different code versions,
+the report logs a warning and `summary.md` lists each git commit and source hash.
 
 ### Interpret the results
 
