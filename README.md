@@ -328,7 +328,11 @@ sequence diagrams.
 
 [`experiments/rliable_tmaze.json`](experiments/rliable_tmaze.json) is the single
 source of truth for the grid: `parameters` lists `RunConfig` values (full
-Cartesian product), `train_seeds` the number of seeds (1..N), `eval_episodes`,
+Cartesian product), or a list of such groups whose products are combined, so
+models with different axes share one grid. The T-Maze grid has three groups:
+DTQN and DTQN-kNN over context and layers, DRQN over context (its training
+sequence length), and memoryless DQN with context 1. Overlapping groups are
+rejected. `train_seeds` sets the number of seeds (1..N), then `eval_episodes`,
 `eval_interval` (training steps between evaluations) and `comparisons`
 (`[candidate, baseline]` models). `parameters` must set `model`, `env` and
 `num_steps`, and must not set `training_seed`, `eval_seed` or `eval_episodes`,
@@ -336,7 +340,8 @@ which the protocol derives. Check that its hyperparameters match the runs you
 want to reproduce before launching it.
 
 ```bash
-# List the 60 jobs (2 models x 3 contexts x 2 layers x 5 seeds) and their status
+# List the 80 jobs and their status: 60 DTQN/DTQN-kNN (2 models x 3 contexts x
+# 2 layers x 5 seeds), 15 DRQN (3 contexts x 5 seeds) and 5 DQN
 python run_rliable_grid.py --grid experiments/rliable_tmaze.json --dry-run
 
 # Run everything on the GPU (when available) with a calibrated number of parallel
@@ -362,8 +367,8 @@ python run_rliable_grid.py --grid experiments/rliable_tmaze.json --seeds 10
 | `--workers` | `1` | Runs in parallel processes; `auto` calibrates on short probe runs first |
 | `--dry-run` | off | List the selected jobs and whether each is complete |
 
-To check the pipeline before the full grid, run the CPU smoke test (2 models x 2
-seeds, 3,000 steps, about 6 minutes) into its own folders:
+To check the pipeline before the full grid, run the smoke test (DTQN, DTQN-kNN,
+DRQN and DQN, 2 seeds each, 3,000 steps) into its own folders:
 
 ```bash
 python run_rliable_grid.py --grid experiments/rliable_smoke.json \

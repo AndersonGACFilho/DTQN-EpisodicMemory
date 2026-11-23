@@ -1,16 +1,42 @@
 {
-  "parameters": {
-    "model": ["DTQN", "DTQN-kNN"],
-    "env": ["PassiveTMaze-v0"],
-    "context": [6],
-    "layers": [2],
-    "corridor_length": [5],
-    "num_steps": [3000],
-    "prefill_steps": [1000],
-    "bag_size": [0]
-  },
+  "parameters": [
+    {
+      "model": ["DTQN", "DTQN-kNN"],
+      "env": ["PassiveTMaze-v0"],
+      "context": [6],
+      "layers": [2],
+      "corridor_length": [5],
+      "num_steps": [3000],
+      "prefill_steps": [1000],
+      "bag_size": [0]
+    },
+    {
+      "model": ["DRQN"],
+      "env": ["PassiveTMaze-v0"],
+      "context": [6],
+      "layers": [2],
+      "corridor_length": [5],
+      "num_steps": [3000],
+      "prefill_steps": [1000],
+      "bag_size": [0]
+    },
+    {
+      "model": ["DQN"],
+      "env": ["PassiveTMaze-v0"],
+      "context": [1],
+      "layers": [2],
+      "corridor_length": [5],
+      "num_steps": [3000],
+      "prefill_steps": [1000],
+      "bag_size": [0]
+    }
+  ],
   "train_seeds": 2,
   "eval_episodes": 100,
   "eval_interval": 1000,
-  "comparisons": [["DTQN-kNN", "DTQN"]]
+  "comparisons": [
+    ["DTQN-kNN", "DTQN"],
+    ["DTQN-kNN", "DRQN"],
+    ["DTQN", "DRQN"]
+  ]
 }
