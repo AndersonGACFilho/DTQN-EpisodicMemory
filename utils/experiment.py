@@ -2,12 +2,13 @@
 
 import csv
 from pathlib import Path
-from typing import Any, Dict, Tuple
+from typing import Any, Dict, List, Tuple
 
 import gym
 import torch
 from gym.wrappers.time_limit import TimeLimit
 
+from dtqn.networks.knn_memory import MemoryConfig
 from utils import env_processing
 from utils.agent_utils import get_agent
 from utils.epsilon_anneal import LinearAnneal
@@ -109,6 +110,15 @@ def build_agent(
         config.gate,
         config.pos,
         config.bag_size,
+        memory_enabled=config.memory_enabled,
+        memory_config=MemoryConfig(
+            size=config.memory_size,
+            top_k=config.memory_top_k,
+            layer=config.memory_layer,
+            gate=config.memory_gate,
+            gate_bias_init=config.memory_gate_bias_init,
+            stop_grad=config.memory_stop_grad,
+        ),
     )
 
 
@@ -118,7 +128,9 @@ def effective_settings(config: RunConfig, horizon: int) -> Dict[str, Any]:
         params["context"] = 1
     params["history"] = min(config.history, params["context"])
     params["max_episode_steps"] = horizon
-    inactive = []
+    inactive: List[str] = []
+    if config.model != "DTQN-kNN" or not config.memory_enabled:
+        inactive.extend(key for key in params if key.startswith("memory_"))
     if config.env not in {"PassiveTMaze-v0", "NoisyTMaze-v0", "AssociativeCorridor-v0"}:
         inactive.append("corridor_length")
     if config.env != "NoisyTMaze-v0":
