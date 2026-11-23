@@ -7,6 +7,7 @@ from torch.nn import Module
 from dtqn.agents.dqn import DqnAgent, TrainMode
 from utils.context import Context
 from utils.random import RNG
+from utils.torch_utils import select_action_values
 
 
 class DrqnAgent(DqnAgent):
@@ -149,7 +150,7 @@ class DrqnAgent(DqnAgent):
         )
 
         # After gathering, Q values becomes [batch-size x hist-len x 1], which we squeeze to [batch-size x hist-len]
-        q_values = q_values.gather(2, actions).squeeze()
+        q_values = select_action_values(q_values, actions).squeeze()
 
         with torch.no_grad():
             # Next obss goes from [batch-size x context-len x obs-len] to

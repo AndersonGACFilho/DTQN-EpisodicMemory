@@ -402,16 +402,23 @@ name to the grid for a new model.
 
 **Speed.** On an RTX 3070, a short DTQN-kNN run was 8x faster on the GPU than on
 the 12-core CPU, and DTQN 1.6x faster. In a profiled CPU run, gradient updates
-took about 94% of the time and periodic evaluation about 1%. With `--workers auto`, the runner first trains
-one short probe per worker (cycling over the grid's models) with 1, 2, 4 and 8
-workers, stops when a larger count is not at least 10% faster, and runs the grid
-with the best count. Each worker gets an equal share of the CPU threads. On the
-GPU, every worker also needs its own CUDA context, which takes about 3.4 GB with
-PyTorch 1.11 (CUDA 11.3) on an RTX 3070; a worker count whose probes fail is
-skipped, so an 8 GB card shared with a desktop typically gets 2 workers. All runs
-of a grid use the same device, and each run's metadata records the device, worker
-count and threads. Calibration repeats on every invocation; pass the chosen
-number explicitly (for example `--workers 4`) to skip it when resuming.
+took about 94% of the time and periodic evaluation about 1%. With
+`--workers auto`, the runner first trains one short probe per worker (cycling over
+the grid's models) with 1, 2, 4 and 8 workers, stops when a larger count fails or
+is not at least 10% faster, and runs the grid with the best count. On the GPU,
+every worker needs its own CUDA context, which takes about 3.4 GB with PyTorch
+1.11 (CUDA 11.3), so an 8 GB card shared with a desktop typically gets 2 workers.
+All runs of a grid use the same device, and each run's metadata records the
+device, mode and worker count. Calibration repeats on every invocation; pass the
+chosen number explicitly (for example `--workers 2`) to skip it when resuming.
+
+**Reproducibility.** The same seed, device and code give bit-identical weights and
+evaluation records, in sequential and parallel mode alike. Every run enables
+PyTorch's deterministic algorithms (an operation without a deterministic
+implementation raises an error instead of varying silently) and uses one CPU
+thread, because CPU results change with the thread count. Results are not
+bit-identical across devices: CPU and GPU arithmetic differ slightly, which is
+why the report flags mixed devices.
 
 **Failures and resuming.** A run that fails is logged with its traceback, the
 remaining runs continue, and the script exits with status 1. Repeat the command
