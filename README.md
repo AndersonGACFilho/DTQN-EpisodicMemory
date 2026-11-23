@@ -104,7 +104,7 @@ python run.py --model DTQN --envs PassiveTMaze-v0 --corridor-length 10 \
   --eval-episodes 10 --seed 1 --project-name tmaze-smoke --disable-wandb --verbose
 ```
 
-`--corridor-length` defaults to 10 and only affects this environment. The episode
+`--corridor-length` defaults to 10 and also configures Noisy T-Maze below. The episode
 lasts `corridor_length + 1` steps; increase the length beyond `--context` to test
 dependencies outside the observation window. This runs ordinary DTQN; kNN memory
 integration is tracked in #7. No additional runtime packages are required beyond
@@ -134,6 +134,55 @@ The oracle must succeed in every episode. The approximately 50% baseline uses
 correct corridor traversal followed by a random up/down choice; fully random
 navigation generally fails to reach the junction before the deadline. This
 clarifies the random-policy criterion in #6 without changing upstream dynamics.
+
+## Running Noisy T-Maze (#20)
+
+`NoisyTMaze-v0` keeps Passive T-Maze's actions, movement, rewards, initial cue,
+clean junction/branch observations, and `corridor_length + 1` horizon. Only the
+second coordinate of subsequent corridor observations changes:
+
+- `--noise-level p` is the probability of replacing zero with a distractor,
+  from 0 to 1; default **0.5**.
+- `--noise-std sigma` is the finite positive standard deviation of each
+  Gaussian; default **0.1**.
+- Each replacement independently selects a mean of -1 or +1 with equal
+  probability, then samples `Normal(mean, sigma**2)`. Otherwise the value stays
+  zero. Samples are not clipped, so the noisy observation space allows values
+  outside [-1, 1].
+
+At `--noise-level 0`, the observation space and seeded trajectories are identical
+to Passive T-Maze. Noise has its own seeded RNG, leaving the goal/cue sequence
+unchanged across noise levels. The oracle reads the clean initial instruction,
+walks right and chooses the indicated branch; its solution is valid at every
+supported noise level and standard deviation. Rewards are never modified.
+
+```bash
+python run.py --model DTQN --envs NoisyTMaze-v0 --corridor-length 15 \
+  --noise-level 0.5 --noise-std 0.1 --context 14 --history 14 --device cpu \
+  --num-steps 2000 --eval-frequency 500 --eval-episodes 10 --seed 1 \
+  --project-name noisy-tmaze-smoke --disable-wandb --verbose
+
+python -m unittest tests.test_noisy_tmaze -v
+```
+
+Both training and evaluation use the specified noise settings. Output files
+under `policies/<project-name>/NoisyTMaze-v0/` include
+`_corridor=<L>_noise=<p>_std=<sigma>` so configurations stay separate. Use a fresh
+project name for a fresh run. The flags are not forwarded to Car Flag, Memory
+Cards or clean Passive T-Maze. No additional dependencies or renderer are added.
+This is ordinary DTQN; wiring in kNN memory is still #7 and the multi-seed noisy
+experiment is #21.
+
+This variant supplies near-cue distractors, not exact duplicates: continuous
+Gaussian samples almost surely differ from exactly +/-1. The initial-step
+retrieval strategy remains possible, so this experiment alone does not establish
+general content-based retrieval.
+
+Tests cover #20's configurable selection (AC1), exact zero-noise equivalence
+(AC2), and an observation-driven oracle succeeding in 1,000 episodes per setting
+at noise levels 0, 0.25, 0.5 and 1 with standard deviations 0.1 and 1 (AC3).
+Reviewed PR/merge into `main` is a separate completion requirement; local checks
+do not satisfy that requirement by themselves.
 
 ## Project management
 
