@@ -6,6 +6,8 @@ results/
 wandb/
 policies/
 plots/
+# Optional environment sources cloned for installation (see README)
+gym-gridverse/
 
 # LaTeX build output
 paper/*.aux

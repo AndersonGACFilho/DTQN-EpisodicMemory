@@ -497,12 +497,25 @@ Otherwise, you need to install the `gym-gridverse` repo to run the gridverse exp
 
 To install gym-gridverse, you need to clone the `gym-gridverse` [github repo](https://github.com/abaisero/gym-gridverse.git).
 Finally, once you have the source code, pip install it into the virtual enviroment.
-This can be done as follows:
+Install its dependencies first, then the package itself with `--no-deps`:
 
 ```bash
 git clone git@github.com:abaisero/gym-gridverse.git
-cd gym-gridverse
-pip install .
+pip install imageio imageio-ffmpeg more_itertools schema
+pip install --no-deps ./gym-gridverse
+```
+
+A plain `pip install .` fails on recent compilers. `gym==0.18` declares
+`Pillow<=7.2.0`, so pip downgrades Pillow and builds 7.2.0 from source, which
+modern GCC rejects (C23 `bool`, incompatible pointer types). `--no-deps` keeps
+the Pillow already in the environment. The clone is not needed after
+installation, and `gym-gridverse/` is git-ignored if you clone it into the
+repository root.
+
+Check the installation with:
+
+```bash
+python -c "from utils.env_processing import make_env; make_env('gv_memory.5x5.yaml').reset()"
 ```
 
 ### Installing rl-parsers
