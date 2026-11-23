@@ -7,7 +7,7 @@ import json
 import math
 from dataclasses import asdict, dataclass, fields
 from pathlib import Path
-from typing import Any, Dict, List, Mapping
+from typing import AbstractSet, Any, Dict, List, Mapping
 
 
 @dataclass
@@ -203,10 +203,18 @@ def unique_object(pairs: List[Any]) -> Dict[str, Any]:
 
 
 def load_grid(path: Path) -> Dict[str, List[Any]]:
-    raw = json.loads(path.read_text(), object_pairs_hook=unique_object)
+    return parse_grid(read_unique_json(path), REQUIRED_GRID_KEYS)
+
+
+def read_unique_json(path: Path) -> Any:
+    return json.loads(path.read_text(), object_pairs_hook=unique_object)
+
+
+def parse_grid(raw: Any, required_keys: AbstractSet[str]) -> Dict[str, List[Any]]:
+    """Validate a flat object of nonempty RunConfig value lists."""
     if not isinstance(raw, dict):
         raise ValueError("The config must be a flat JSON object of nonempty lists")
-    unknown, missing = set(raw) - set(DEFAULTS), REQUIRED_GRID_KEYS - set(raw)
+    unknown, missing = set(raw) - set(DEFAULTS), set(required_keys) - set(raw)
     if unknown or missing:
         raise ValueError(
             f"Unknown keys: {sorted(unknown)}; missing keys: {sorted(missing)}"
