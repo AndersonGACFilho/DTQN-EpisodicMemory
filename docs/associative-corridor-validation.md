@@ -35,11 +35,11 @@ These are integration checks, not evidence of learned task performance.
 
 Direct checks through `run.evaluate` also passed over 20 episodes each:
 
-| Policy/task | Success rate | Mean return | Mean steps |
-|---|---:|---:|---:|
-| Observation-driven associative oracle | 1 | 4 | 12 |
-| Correct first answer, wrong second answer | 0 | 1 | 8.5 |
-| Legacy positive-return task with `is_success=False` | 1 | 1 | 1 |
+| Policy/task                                         | Success rate | Mean return | Mean steps |
+|-----------------------------------------------------|-------------:|------------:|-----------:|
+| Observation-driven associative oracle               |            1 |           4 |         12 |
+| Correct first answer, wrong second answer           |            0 |           1 |        8.5 |
+| Legacy positive-return task with `is_success=False` |            1 |           1 |          1 |
 
 Only the new environment declares `requires_explicit_success=True`; the legacy
 success rule is unchanged for other environments. kNN integration, rendering,

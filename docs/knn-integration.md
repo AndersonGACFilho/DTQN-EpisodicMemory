@@ -43,15 +43,15 @@ hyphens with underscores and put values in lists. They affect `DTQN-kNN`; other
 models record them as inactive. Boolean false values are passed correctly from
 the sweep to its subprocesses.
 
-| Training flag | Default | Effect |
-|---|---|---|
-| `--memory-enabled` / `--no-memory-enabled` | Enabled for `DTQN-kNN` | Disabled selects the original DTQN network and agent, preserving fixed-seed outputs and initialization |
-| `--memory-size` | 256 | Maximum earlier timesteps retained per episode, with one K/V vector per head per timestep |
-| `--memory-top-k` | 8 | Neighbours per query/head; capped at storage capacity; unfilled slots are masked |
-| `--memory-layer` | -1 | Python-style block index, zero-based; -1 selects the last block |
-| `--memory-gate` / `--no-memory-gate` | Enabled | Mix local and retrieved attention; disabled uses local attention while still exercising population |
-| `--memory-gate-bias-init` | 0.0 | Initial per-head bias; sigmoid(0) gives equal local/retrieved weights where memory exists |
-| `--memory-stop-grad` / `--no-memory-stop-grad` | Enabled | Detach prefix K/V by default; disabled preserves gradients through selected prefix entries during training |
+| Training flag                                  | Default                | Effect                                                                                                     |
+|------------------------------------------------|------------------------|------------------------------------------------------------------------------------------------------------|
+| `--memory-enabled` / `--no-memory-enabled`     | Enabled for `DTQN-kNN` | Disabled selects the original DTQN network and agent, preserving fixed-seed outputs and initialization     |
+| `--memory-size`                                | 256                    | Maximum earlier timesteps retained per episode, with one K/V vector per head per timestep                  |
+| `--memory-top-k`                               | 8                      | Neighbours per query/head; capped at storage capacity; unfilled slots are masked                           |
+| `--memory-layer`                               | -1                     | Python-style block index, zero-based; -1 selects the last block                                            |
+| `--memory-gate` / `--no-memory-gate`           | Enabled                | Mix local and retrieved attention; disabled uses local attention while still exercising population         |
+| `--memory-gate-bias-init`                      | 0.0                    | Initial per-head bias; sigmoid(0) gives equal local/retrieved weights where memory exists                  |
+| `--memory-stop-grad` / `--no-memory-stop-grad` | Enabled                | Detach prefix K/V by default; disabled preserves gradients through selected prefix entries during training |
 
 Memory size and top-k must be positive. The selected layer must exist.
 `DTQN-kNN` requires `bag_size=0`; the older observation bag is a separate method.
@@ -128,11 +128,11 @@ Its samples are for execution cost, not evidence of learning.
 
 CPU validation on 2026-11-22, Python 3.10 / torch 2.7.1+cu128, one CPU thread:
 
-| Quick short-maze check | DTQN | DTQN-kNN |
-|---|---|---|
-| L=3, K=8, 500 training steps | 43/100 evaluation successes | 43/100 |
-| L=3, K=8, 1500 training steps | 100/100 evaluation successes | 100/100 |
-| Synthetic replay: L=15, K=4, M=16, width=32, 2 layers, 4 heads, batch=8 | 3.77 ms/update | 10.21 ms/update |
+| Quick short-maze check                                                  | DTQN                         | DTQN-kNN        |
+|-------------------------------------------------------------------------|------------------------------|-----------------|
+| L=3, K=8, 500 training steps                                            | 43/100 evaluation successes  | 43/100          |
+| L=3, K=8, 1500 training steps                                           | 100/100 evaluation successes | 100/100         |
+| Synthetic replay: L=15, K=4, M=16, width=32, 2 layers, 4 heads, batch=8 | 3.77 ms/update               | 10.21 ms/update |
 
 The short checks use training seed 1, evaluation seed 10000, 128 prefill steps,
 width 32, 2 layers, 4 heads, batch 8, history 8, top-k 4 and M=16.
@@ -149,13 +149,13 @@ completed 32 gradient updates plus 3 saved-policy evaluation episodes in each
 gradient mode, also exercising identity ordering and action embeddings.
 The full local suite has 75 passing tests; strict mypy and pre-commit checks pass.
 
-| Issue #7 criterion | Evidence |
-|---|---|
-| AC1: memory off preserves DTQN | Fixed-seed parameter, RNG and output equality, including identity ordering and action embeddings |
-| AC2: full Passive T-Maze episode | Training plus saved-model evaluation run with L greater than K |
+| Issue #7 criterion                             | Evidence                                                                                                                                              |
+|------------------------------------------------|-------------------------------------------------------------------------------------------------------------------------------------------------------|
+| AC1: memory off preserves DTQN                 | Fixed-seed parameter, RNG and output equality, including identity ordering and action embeddings                                                      |
+| AC2: full Passive T-Maze episode               | Training plus saved-model evaluation run with L greater than K                                                                                        |
 | AC3: replay memory precedes the sampled window | Changing sampled/future observations cannot alter the prefix; batches isolate episode rows; acting and reconstructed keys match through FIFO wrapping |
-| AC4: reset every episode | Reset tests plus independent train/eval stores and repeated evaluation episodes |
-| AC5: short-maze learning sanity check | Equal success at 500 and 1500 steps in the single-seed quick comparison above |
+| AC4: reset every episode                       | Reset tests plus independent train/eval stores and repeated evaluation episodes                                                                       |
+| AC5: short-maze learning sanity check          | Equal success at 500 and 1500 steps in the single-seed quick comparison above                                                                         |
 
 Additional tests cover random exploration/prefill, repeated forward calls,
 shifted DDQN prefixes, target-network isolation, both gradient modes, and saving

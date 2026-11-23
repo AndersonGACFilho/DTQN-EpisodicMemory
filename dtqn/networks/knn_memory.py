@@ -113,8 +113,6 @@ class KNNMemory:
             values = values.detach()
 
         num_new = valid.sum(1)
-        # Same slots as inserting the steps one at a time; only the last `size` valid
-        # steps survive, so no slot is written twice
         position = valid.long().cumsum(1) - 1
         keep = valid & (position >= (num_new - self.size).unsqueeze(1))
         slots = (self.ptr.unsqueeze(1) + position) % self.size

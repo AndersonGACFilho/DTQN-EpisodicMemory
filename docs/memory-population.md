@@ -13,14 +13,14 @@ the original decision below.
 
 ## Summary
 
-| Question | Decision |
-|---|---|
-| What the memory holds | The last M steps of the current episode before the start of the local window |
-| How it is filled at training time | Keys and values of the prefix are **recomputed with the current network under `no_grad`** at every training step (option A) |
-| How it is filled at acting time | A step enters the memory when it is evicted from the context window, with the key and value computed when it was the newest token |
-| Where keys come from | Key/value projections of the attention in transformer layer `l` (default: last layer; ablated in [#22](https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/issues/22)) |
-| Gradient | **Stop-gradient by default**; the differentiable memory is an ablation |
-| Replay buffer | No new stored arrays; `sample()` also returns the episode index and window start; `episode_lengths` becomes `int32` |
+| Question                          | Decision                                                                                                                                                                   |
+|-----------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| What the memory holds             | The last M steps of the current episode before the start of the local window                                                                                               |
+| How it is filled at training time | Keys and values of the prefix are **recomputed with the current network under `no_grad`** at every training step (option A)                                                |
+| How it is filled at acting time   | A step enters the memory when it is evicted from the context window, with the key and value computed when it was the newest token                                          |
+| Where keys come from              | Key/value projections of the attention in transformer layer `l` (default: last layer; ablated in [#22](https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/issues/22)) |
+| Gradient                          | **Stop-gradient by default**; the differentiable memory is an ablation                                                                                                     |
+| Replay buffer                     | No new stored arrays; `sample()` also returns the episode index and window start; `episode_lengths` becomes `int32`                                                        |
 
 ## Context
 
@@ -65,14 +65,14 @@ Write the key and value computed while acting into the buffer, next to each obse
 - **Replay buffer:** new arrays `keys` and `values` of shape `[max_size, max_episode_steps, d_model]` per key layer, filled in `store()` and cleared in `cleanse_episode()`; `episode_lengths` must become `int32`.
 - **Ablations:** the differentiable memory is impossible (stored tensors have no graph), and every key-layer setting needs its own data collection.
 
-| | A: recompute under `no_grad` | B: store at collection |
-|---|---|---|
-| Extra compute per training step | about `B · min(s, M) · K` tokens through `l` layers, ×2 with the target network | none |
-| Extra storage | none | about `buf-size × 2 × d_model × 4` B per key layer (≈0.5 GB by default) |
-| Staleness of keys | none | up to the age of the oldest episode in the buffer |
-| Replay buffer changes | return episode index and start; `episode_lengths` → `int32` | new `keys`/`values` arrays; `episode_lengths` → `int32` |
-| Differentiable ablation | possible | impossible |
-| Key-layer ablation | free | needs new data per setting |
+|                                 | A: recompute under `no_grad`                                                    | B: store at collection                                                  |
+|---------------------------------|---------------------------------------------------------------------------------|-------------------------------------------------------------------------|
+| Extra compute per training step | about `B · min(s, M) · K` tokens through `l` layers, ×2 with the target network | none                                                                    |
+| Extra storage                   | none                                                                            | about `buf-size × 2 × d_model × 4` B per key layer (≈0.5 GB by default) |
+| Staleness of keys               | none                                                                            | up to the age of the oldest episode in the buffer                       |
+| Replay buffer changes           | return episode index and start; `episode_lengths` → `int32`                     | new `keys`/`values` arrays; `episode_lengths` → `int32`                 |
+| Differentiable ablation         | possible                                                                        | impossible                                                              |
+| Key-layer ablation              | free                                                                            | needs new data per setting                                              |
 
 ## Decision
 

@@ -79,14 +79,14 @@ its respective network. Even immediately after target synchronization, older
 target K/V may not match the copied network's current embedding space. This is
 an intentional experimental tradeoff, not equivalent to fresh-prefix training.
 
-| Property | DTQN-kNN | DTQN-kNN-cached |
-|---|---|---|
-| External K/V during replay | Re-encoded with each current network | Gathered from collection-time banks |
-| Prefix encoder work per update | Three reconstruction calls | None |
-| Target collection work | No separate target capture | One prefix/projection forward per decision timestep |
-| Extra CPU storage for K/V | No replay banks | Four float32 arrays: online K/V and target K/V |
-| Gradient through external K/V | Optional differentiable ablation | Always detached |
-| Local context forward/backward | Normal DTQN computation | Normal DTQN computation |
+| Property                       | DTQN-kNN                             | DTQN-kNN-cached                                     |
+|--------------------------------|--------------------------------------|-----------------------------------------------------|
+| External K/V during replay     | Re-encoded with each current network | Gathered from collection-time banks                 |
+| Prefix encoder work per update | Three reconstruction calls           | None                                                |
+| Target collection work         | No separate target capture           | One prefix/projection forward per decision timestep |
+| Extra CPU storage for K/V      | No replay banks                      | Four float32 arrays: online K/V and target K/V      |
+| Gradient through external K/V  | Optional differentiable ablation     | Always detached                                     |
+| Local context forward/backward | Normal DTQN computation              | Normal DTQN computation                             |
 
 Local attention still recomputes the current context on every forward; this is
 not incremental local KV caching. Exact kNN search, tensor transfers, temporary
@@ -125,11 +125,11 @@ library could not load under the host's executable-stack restrictions.
 For the synthetic update benchmark (L=15, K=4, M=16, top-k=4, width=32,
 two blocks, four heads, batch=8), after 10 warm-up and 300 measured updates:
 
-| Model | Time per update | Collection of 192 synthetic transitions | Allocated replay K/V and mask |
-|---|---|---|---|
-| DTQN | 3.58 ms | 0.005 s | 0 bytes |
-| DTQN-kNN | 9.96 ms | 0.150 s | 0 bytes |
-| DTQN-kNN-cached | 5.99 ms | 0.205 s | 1,630,827 bytes |
+| Model           | Time per update | Collection of 192 synthetic transitions | Allocated replay K/V and mask |
+|-----------------|-----------------|-----------------------------------------|-------------------------------|
+| DTQN            | 3.58 ms         | 0.005 s                                 | 0 bytes                       |
+| DTQN-kNN        | 9.96 ms         | 0.150 s                                 | 0 bytes                       |
+| DTQN-kNN-cached | 5.99 ms         | 0.205 s                                 | 1,630,827 bytes               |
 
 Cached updates took about 40% less time than fresh-prefix updates in this
 CPU check; collection was more expensive. This is not a GPU speedup claim.
