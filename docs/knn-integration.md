@@ -14,10 +14,6 @@ describe the original fresh-prefix `DTQN-kNN` variant.
 From the repo root with the existing venv activated:
 
 ```bash
-# Two small train/final-eval pairs. This checks execution, not convergence.
-python train_and_eval.py --config experiments/knn-smoke.json \
-  --project-name knn-smoke --device cpu
-
 # One longer run. Prefill is additional to the training-step budget.
 python train.py --model DTQN-kNN --env PassiveTMaze-v0 \
   --context 14 --history 14 --corridor-length 15 \
@@ -36,6 +32,9 @@ and learned gate parameters. Evaluation reconstructs the variant from that
 bundle and starts every episode with empty memory. Memory contents are runtime
 state, not persistent model weights. Existing action/observation trajectories,
 episode statistics, losses, timing and GPU-memory accounting remain available.
+For a model comparison, save the
+[example JSON grid](environments.md#shared-execution-and-evaluation-conventions)
+and run it with `train_and_eval.py`; comparison configs are user-created files.
 
 ## Options
 
@@ -118,8 +117,6 @@ the pilot and experiments must measure those comparisons.
 
 ```bash
 python -m unittest tests.test_knn_memory tests.test_knn_integration -v
-python train_and_eval.py --config experiments/knn-short-check.json \
-  --project-name knn-short-check --device cpu
 python scripts/benchmark_knn.py --device cpu --output results/knn-update-cost.json
 ```
 

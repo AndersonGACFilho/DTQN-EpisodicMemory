@@ -1,6 +1,6 @@
 # Pluggable kNN Episodic Memory for Deep Q-Learning Agents in Partially Observable Environments
 
-Pluggable kNN episodic memory (from Memorizing Transformers) for DTQN and DRQN agents in partially observable RL. Tests whether agents can use information beyond the context window, evaluated on the Passive T-Maze, Car Flag and Memory Cards.
+Pluggable kNN episodic memory (from Memorizing Transformers) for DTQN and DRQN agents in partially observable RL. The project investigates access to information beyond the context window; the [environment guide](docs/environments.md) describes the tasks, their limitations, and implementation availability.
 
 > **Status:** UFRGS Deep Learning final project (Group 7), due **11/30/2026**. This repository is a fork of [kevslinger/DTQN](https://github.com/kevslinger/DTQN); the original DTQN documentation is kept [below](#deep-transformer-q-networks-for-partially-observable-reinforcement-learning).
 >
@@ -23,11 +23,33 @@ The quantitative target and the tie criterion are defined in #1. Every configura
 
 ## Environments and what each tests
 
-| Environment | What it tests |
-|---|---|
-| **Passive T-Maze** (Ni et al., 2023) | Main experiment: the corridor length controls the dependency distance, below and above K |
-| **Noisy T-Maze** | Whether retrieval still finds the cue when it is less distinct, since stored keys receive no gradient |
-| **Car Flag** and **Memory Cards** | Already solved by DTQN with K = 50, so they check that the memory does not hurt within the window |
+The [standardized environment guide](docs/environments.md) covers every configured
+environment: **35 IDs or YAML configurations across 14 families**, including the
+two new variants. Each entry has a paper-ready purpose and limitation, mechanics,
+observations/actions, rewards/success, configuration, usage, rendering status,
+and sources. Related sizes and observation variants are listed explicitly.
+
+| Project environment | Experimental role | Guide |
+|---|---|---|
+| **Passive T-Maze** | Recall of one instruction across a controlled delay | [Description and limitations](docs/environments.md#passive-t-maze) |
+| **Noisy T-Maze** | Recall with Gaussian corridor distractors | [Description and limitations](docs/environments.md#noisy-t-maze) |
+| **Associative Corridor** | Four class-specific instruction/use pairs, with interleaving allowed | [Description and limitations](docs/environments.md#associative-corridor) |
+| **Car Flag** | Preserve the baseline's performance within the context window | [Description and limitations](docs/environments.md#car-flag) |
+| **Memory Cards** | Preserve the baseline's performance within the context window | [Description and limitations](docs/environments.md#memory-cards) |
+
+**Car Flag and Memory Cards only check for no performance loss within the window
+in this study, using the selected `K = 50` setup.** They are not evidence of
+retrieval beyond that window. These are experimental roles, not newly measured
+results.
+
+The guide also covers [GridVerse](docs/environments.md#gridverse-memory),
+[MiniHack](docs/environments.md#minihack-room),
+[Hallway](docs/environments.md#hallway), and
+[HeavenHell](docs/environments.md#heavenhell). All five project environments are
+merged into `main`; the other families require optional provider packages.
+The guide's examples use the current `train.py` / `eval.py` workflow. Paper reuse for
+[#2](https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/issues/2) is
+[tracked separately](docs/environments.md#acceptance-criteria-and-paper-handoff).
 
 ## Agents and baselines
 
@@ -67,11 +89,16 @@ Entries are never refreshed after weight updates. See the
 [cached variant](docs/knn-cached.md) for commands, storage costs and the staleness
 tradeoff. Both variants work with the train/eval scripts and JSON sweeps.
 
-Run two small baseline/memory training and final-evaluation jobs:
+Train and evaluate one memory-enabled policy with the current scripts:
 
 ```bash
-python train_and_eval.py --config experiments/knn-smoke.json \
-  --project-name knn-smoke --device cpu
+python train.py --model DTQN-kNN --env PassiveTMaze-v0 \
+  --context 14 --history 14 --corridor-length 15 --memory-size 32 \
+  --memory-top-k 4 --batch 4 --prefill-steps 128 --num-steps 32000 \
+  --training-seed 1 --device cpu --output-dir results/knn-example/train
+python eval.py --model-path results/knn-example/train/model.pt \
+  --eval-episodes 100 --eval-seed 10000 --device cpu \
+  --output-dir results/knn-example/eval
 ```
 
 See [integration instructions and validation](docs/knn-integration.md) for
@@ -79,6 +106,8 @@ single-run commands, population rules, measured update cost and acceptance check
 This retains DTQN's full-window local forward; it does not introduce incremental
 local KV caching. A speed or accuracy advantage over increasing context is an
 experimental question, not an assumption.
+For a JSON comparison of all three models, use the
+[example grid in the environment guide](docs/environments.md#shared-execution-and-evaluation-conventions).
 
 | Option | Default | Effect |
 |---|---|---|
@@ -142,16 +171,20 @@ Passive T-Maze is available as `PassiveTMaze-v0`. With the project environment
 activated, run this from the repository root:
 
 ```bash
-python run_legacy.py --model DTQN --envs PassiveTMaze-v0 --corridor-length 10 \
-  --context 50 --device cpu --num-steps 2000 --eval-frequency 500 \
-  --eval-episodes 10 --seed 1 --project-name tmaze-smoke --disable-wandb --verbose
+python train.py --model DTQN --env PassiveTMaze-v0 --corridor-length 10 \
+  --context 50 --history 50 --prefill-steps 128 --num-steps 2000 --batch 4 \
+  --training-seed 1 --device cpu --output-dir results/tmaze-smoke/train --verbose
+python eval.py --model-path results/tmaze-smoke/train/model.pt \
+  --eval-episodes 100 --eval-seed 10000 --device cpu \
+  --output-dir results/tmaze-smoke/eval --verbose
 ```
 
-`--corridor-length` defaults to 10 and also configures Noisy T-Maze and Associative Corridor. The episode
-lasts `corridor_length + 1` steps; increase the length beyond `--context` to test
+`--corridor-length` defaults to 10 and also configures Noisy T-Maze and
+Associative Corridor. A Passive T-Maze episode lasts `corridor_length + 1` steps;
+increase the length beyond `--context` to test
 dependencies outside the observation window. This runs ordinary DTQN; use the
-`DTQN-kNN` workflow above for episodic memory. No additional runtime packages are required beyond
-Gym and NumPy already used by the runner.
+`DTQN-kNN` workflow above for episodic memory. No additional runtime packages are
+required beyond Gym and NumPy already used by the runner.
 
 The port follows [Memory-RL's Passive T-Maze](https://github.com/twni2016/Memory-RL/blob/main/envs/tmaze.py)
 and its [experiment configuration](https://github.com/twni2016/Memory-RL/blob/main/configs/envs/tmaze_passive.py).
@@ -162,10 +195,11 @@ earns 0, and nonterminal steps that fall behind the shortest route incur `-1/L`.
 The cue is not shown again when returning to the start. Episode seeds are local
 to each environment. There is no graphical renderer in this port.
 
-The runner first collects 50,000 random transitions before training. CSV results
-are written under `policies/<project-name>/PassiveTMaze-v0/`; filenames include
-`_corridor=<L>` to keep lengths separate. Existing policy-saving behavior is
-unchanged: `--save-policy` saves periodically, not at the end of a short run.
+The command requests 128 random prefill interactions, rounded up to finish the
+last episode, in addition to 2,000 training interactions. Training always saves
+the final `model.pt`; metadata, episode/loss CSVs and step trajectories are
+written beside it. Evaluation runs separately with the saved environment settings.
+Use new/empty output directories. The default prefill remains 50,000 when omitted.
 
 Run the environment sanity checks with:
 
@@ -200,18 +234,21 @@ walks right and chooses the indicated branch; its solution is valid at every
 supported noise level and standard deviation. Rewards are never modified.
 
 ```bash
-python run_legacy.py --model DTQN --envs NoisyTMaze-v0 --corridor-length 15 \
+python train.py --model DTQN --env NoisyTMaze-v0 --corridor-length 15 \
   --noise-level 0.5 --noise-std 0.1 --context 14 --history 14 --device cpu \
-  --num-steps 2000 --eval-frequency 500 --eval-episodes 10 --seed 1 \
-  --project-name noisy-tmaze-smoke --disable-wandb --verbose
+  --prefill-steps 128 --num-steps 2000 --batch 4 --training-seed 1 \
+  --output-dir results/noisy-tmaze-smoke/train --verbose
+python eval.py --model-path results/noisy-tmaze-smoke/train/model.pt \
+  --eval-episodes 100 --eval-seed 10000 --device cpu \
+  --output-dir results/noisy-tmaze-smoke/eval --verbose
 
 python -m unittest tests.test_noisy_tmaze -v
 ```
 
-Both training and evaluation use the specified noise settings. Output files
-under `policies/<project-name>/NoisyTMaze-v0/` include
-`_corridor=<L>_noise=<p>_std=<sigma>` so configurations stay separate. Use a fresh
-project name for a fresh run. The flags are not forwarded to Car Flag, Memory
+Both training and evaluation use the saved noise settings. The final model,
+metadata and trajectories live under the supplied output directories; corridor
+and noise parameters are recorded in the metadata. Use fresh directories for
+fresh runs. The flags are not forwarded to Car Flag, Memory
 Cards or clean Passive T-Maze. No additional dependencies or renderer are added.
 This command runs ordinary DTQN; select `DTQN-kNN` in the new workflow to use
 episodic memory. The multi-seed noisy experiment is #21.
@@ -224,8 +261,8 @@ general content-based retrieval.
 Tests cover #20's configurable selection (AC1), exact zero-noise equivalence
 (AC2), and an observation-driven oracle succeeding in 1,000 episodes per setting
 at noise levels 0, 0.25, 0.5 and 1 with standard deviations 0.1 and 1 (AC3).
-Reviewed PR/merge into `main` is a separate completion requirement; local checks
-do not satisfy that requirement by themselves.
+The implementation is merged into `main`; these environment checks do not
+establish learned-policy performance.
 
 ## Running Associative Corridor
 
@@ -261,20 +298,22 @@ The `instructions` and `queries` dictionaries on `env.unwrapped` expose event
 positions for inspecting a seeded schedule; the agent receives observations only.
 
 ```bash
-python run_legacy.py --model DTQN --envs AssociativeCorridor-v0 --corridor-length 100 \
-  --context 14 --history 14 --device cpu --num-steps 2000 \
-  --eval-frequency 500 --eval-episodes 10 --seed 1 \
-  --project-name associative-smoke --disable-wandb --verbose
+python train.py --model DTQN --env AssociativeCorridor-v0 --corridor-length 100 \
+  --context 14 --history 14 --device cpu --prefill-steps 128 --num-steps 2000 \
+  --batch 4 --training-seed 1 --output-dir results/associative-smoke/train --verbose
+python eval.py --model-path results/associative-smoke/train/model.pt \
+  --eval-episodes 100 --eval-seed 10000 --device cpu \
+  --output-dir results/associative-smoke/eval --verbose
 
 python -m unittest tests.test_associative_corridor -v
 ```
 
 Run this separately from environments with two-dimensional observations.
-Output files under `policies/<project-name>/AssociativeCorridor-v0/` include
-`_corridor=<L>`. Use a fresh project name for a fresh smoke run. No new packages
-or graphical renderer are included. This runs ordinary DTQN; kNN integration
-remains #7. The task tests class-dependent recall, not the necessity of kNN over
-every other memory architecture.
+The output directories contain final weights, settings, episode/loss CSVs and
+trajectories. Use fresh directories for a fresh run. No new packages or graphical
+renderer are included. This runs ordinary DTQN; select `DTQN-kNN` or
+`DTQN-kNN-cached` for the integrated memory variants. The task tests
+class-dependent recall, not the necessity of kNN over every other memory architecture.
 
 ## Project management
 
@@ -333,7 +372,8 @@ We will keep the [paper](https://github.com/kevslinger/DTQN/tree/paper) branch f
     - [Installing gym-gridverse](#installing-gym-gridverse)
     - [Installing rl-parsers](#installing-rl-parsers)
     - [Installing gym-pomdps](#installing-gym-pomdps)
-  - [Running Experiments](#running-experiments)
+  - [Training, final evaluation, and parameter sweeps](#training-final-evaluation-and-parameter-sweeps)
+  - [Legacy combined runner](#legacy-combined-runner)
     - [Experiment Argument Details](#experiment-argument-details)
     - [Ablations](#ablations)
       - [Transformer Decoder Structure](#transformer-decoder-structure)
@@ -359,7 +399,7 @@ pip install -r requirements.txt
 ```
 
 This basic setup will allow you to run the `Car Flag` and `Memory Cards` environments from our paper.
-If you only have interest in running those domains, skip to the [Running Experiments](#running-experiments) section.
+If you only have interest in running those domains, skip to the [current training workflow](#training-final-evaluation-and-parameter-sweeps).
 Otherwise, you need to install the `gym-gridverse` repo to run the gridverse experiments, and the `gym-pomdps` and `rl-parsers` repos to run the classic POMDPs experiments.
 
 ### Installing gym-gridverse
@@ -397,7 +437,7 @@ pip install .
 
 Tada! Now, you should be ready to run experiments.
 
-## Training, final evaluation, and parameter sweeps (#9)
+## Training, final evaluation, and parameter sweeps
 
 The new workflow separates training from final evaluation and records every
 training, prefill and evaluation action for later inspection:
