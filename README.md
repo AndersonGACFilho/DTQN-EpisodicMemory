@@ -477,17 +477,43 @@ We will keep the [paper](https://github.com/kevslinger/DTQN/tree/paper) branch f
 
 To run our code, you must first set up your environment.
 We recommend using `virtualenv` with `pip` to set up a virtual environment and dependency manager.
-For our experiments, we use `python3.8`; while other versions of python will probably work, they are untested and we cannot guarantee the same performance.
+We use `python3.10` (the same version as CI and the mypy configuration); other versions are untested.
 
 ### Creating Environment
 
-First, create a virtual environment with `python3.8`, and then install the dependencies. This can be done with:
+First, create a virtual environment with `python3.10`, and then install the dependencies. This can be done with:
 
 ```bash
-virtualenv venv -p 3.8
+virtualenv venv -p 3.10
 source venv/bin/activate
-pip install -r requirements.txt
+pip install "pip<24.1"
+pip install --no-deps -r requirements.txt
+pip install patchelf
+patchelf --clear-execstack venv/lib/python3.10/site-packages/torch/lib/libtorch_cpu.so
 ```
+
+Each step works around an incompatibility between the pinned packages and a
+current toolchain (tested with GCC 16, CMake 4.5 and glibc 2.44):
+
+- `pip` 24.1 and newer rejects the metadata of `gym==0.18.0`
+  (`opencv-python (>=3.)`), so pin `pip` below 24.1 first.
+- `gym==0.18.0` declares `Pillow<=7.2.0`, but Pillow 7.2.0 has no wheel for
+  Python 3.10 and fails to compile with recent GCC. `requirements.txt` pins
+  Pillow 9.5.0 instead, which the gym 0.18 environments work with. `--no-deps`
+  stops pip from rejecting that pin; `requirements.txt` already lists every
+  dependency. `pip check` reports only this gym/Pillow mismatch.
+- The `torch==1.11.0` wheel marks `libtorch_cpu.so` as needing an executable
+  stack, which glibc 2.41 and newer refuses (`import torch` fails with
+  `cannot enable executable stack`). `patchelf --clear-execstack` removes the
+  flag. On older glibc this step is unnecessary but harmless.
+
+`minihack` and `nle`, needed only for the `MH-` domains, are in
+`requirements-minihack.txt` (`pip install -r requirements-minihack.txt`).
+`nle==0.8.1` has no wheel and does not compile with recent toolchains (CMake 4
+rejects its `cmake_minimum_required`, and NetHack's headers conflict with
+C23 and recent glibc), so install it only on an older toolchain. Without it,
+startup prints a warning that the `MH-` domains are unavailable; every other
+environment works.
 
 This basic setup will allow you to run the `Car Flag` and `Memory Cards` environments from our paper.
 If you only have interest in running those domains, skip to the [current training workflow](#training-final-evaluation-and-parameter-sweeps).
