@@ -59,6 +59,7 @@ class RunConfig:
             "DTQN",
             "DTQN-bag",
             "DTQN-kNN",
+            "DTQN-kNN-cached",
             "ADRQN",
             "DRQN",
             "DARQN",
@@ -109,9 +110,11 @@ class RunConfig:
                 raise ValueError("in_embed must be divisible by heads")
             if self.a_embed >= self.in_embed:
                 raise ValueError("a_embed must be smaller than in_embed")
-        if self.model == "DTQN-kNN" and self.memory_enabled:
+        if self.model in {"DTQN-kNN", "DTQN-kNN-cached"} and self.memory_enabled:
             if self.bag_size:
-                raise ValueError("DTQN-kNN requires bag_size = 0")
+                raise ValueError(f"{self.model} requires bag_size = 0")
+            if self.model == "DTQN-kNN-cached" and not self.memory_stop_grad:
+                raise ValueError("DTQN-kNN-cached requires memory_stop_grad = true")
             if not -self.layers <= self.memory_layer < self.layers:
                 raise ValueError(
                     "memory_layer must select an existing transformer layer"

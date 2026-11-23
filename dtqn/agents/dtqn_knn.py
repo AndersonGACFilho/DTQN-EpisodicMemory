@@ -50,8 +50,7 @@ class KnnDtqnAgent(DtqnAgent):
         state.last_timestep = -1
 
     @torch.no_grad()
-    def _acting_forward(self) -> torch.Tensor:
-        assert isinstance(self.policy_network, DTQNKNN)
+    def _acting_inputs(self) -> Tuple[torch.Tensor, torch.Tensor]:
         length = min(self.context_len, self.context.timestep + 1)
         obss = torch.as_tensor(
             self.context.obs[:length], dtype=self.obs_tensor_type, device=self.device
@@ -64,10 +63,16 @@ class KnnDtqnAgent(DtqnAgent):
         action_tensor = torch.as_tensor(
             actions, dtype=torch.long, device=self.device
         ).unsqueeze(0)
+        return obss, action_tensor
+
+    def _remember_newest(
+        self,
+        keys: torch.Tensor,
+        values: torch.Tensor,
+        obss: torch.Tensor,
+        actions: torch.Tensor,
+    ) -> None:
         state = self.episode_memory
-        q_values, (keys, values) = self.policy_network.forward_with_memory(
-            obss, action_tensor, state.external
-        )
         newest = (
             keys[:, -1:].detach().clone(),
             values[:, -1:].detach().clone(),
@@ -77,6 +82,15 @@ class KnnDtqnAgent(DtqnAgent):
         else:
             state.pending.append(newest)
             state.last_timestep = self.context.timestep
+
+    @torch.no_grad()
+    def _acting_forward(self) -> torch.Tensor:
+        assert isinstance(self.policy_network, DTQNKNN)
+        obss, actions = self._acting_inputs()
+        q_values, (keys, values) = self.policy_network.forward_with_memory(
+            obss, actions, self.episode_memory.external
+        )
+        self._remember_newest(keys, values, obss, actions)
         return q_values
 
     @torch.no_grad()

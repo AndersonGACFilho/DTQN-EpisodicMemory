@@ -5,6 +5,10 @@ The observation/action embeddings, remaining blocks, residual connections,
 normalization and Q head are reused. Ordinary `DTQN` retains its original path.
 No additional runtime packages are needed.
 
+For collection-time K/V reused without replay-prefix encoding, select the
+separate [DTQN-kNN-cached variant](knn-cached.md). The population rules below
+describe the original fresh-prefix `DTQN-kNN` variant.
+
 ## Run
 
 From the repo root with the existing venv activated:

@@ -5,6 +5,12 @@ Design decision for [#3](https://github.com/AndersonGACFilho/DTQN-EpisodicMemory
 The integration and its local validation are documented in
 [DTQN-kNN](knn-integration.md). The replay length dtype is now `int32`.
 
+Option A remains the behavior of `DTQN-kNN`. A separate
+[DTQN-kNN-cached](knn-cached.md) variant now implements option B, with distinct
+collection-time online and target banks and no refresh after weight updates.
+It is an experiment in the staleness/compute tradeoff, not a replacement for
+the original decision below.
+
 ## Summary
 
 | Question | Decision |

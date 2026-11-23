@@ -1,3 +1,4 @@
+import inspect
 import random
 from enum import Enum
 from typing import Callable, Tuple, Union
@@ -278,7 +279,16 @@ class DqnAgent:
     def load_checkpoint(
         self, checkpoint_dir: str
     ) -> Tuple[str, RunningAverage, RunningAverage, RunningAverage, float]:
-        checkpoint = torch.load(checkpoint_dir + "_checkpoint.pt")
+        # Full training checkpoints contain optimizer/RNG and Python objects.
+        # PyTorch 2.6+ defaults to weights-only; 1.11 has no such argument.
+        load_options = (
+            {"weights_only": False}
+            if "weights_only" in inspect.signature(torch.load).parameters
+            else {}
+        )
+        checkpoint = torch.load(
+            checkpoint_dir + "_checkpoint.pt", map_location="cpu", **load_options
+        )
         # checkpoint = np.load(checkpoint_dir + "_checkpoint.npz", allow_pickle=True)
 
         self.num_train_steps = checkpoint["step"]
