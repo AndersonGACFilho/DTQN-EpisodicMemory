@@ -1,0 +1,61 @@
+\documentclass{article}
+
+\usepackage{PRIMEarxiv}
+
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{hyperref}
+\usepackage{url}
+\usepackage{booktabs}
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{nicefrac}
+\usepackage{microtype}
+\usepackage{fancyhdr}
+\usepackage{graphicx}
+
+\graphicspath{{media/}}
+
+% Header
+\pagestyle{fancy}
+\thispagestyle{empty}
+\rhead{\textit{}}
+\fancyhead[LO]{Pluggable kNN Episodic Memory for Deep Q-Learning}
+
+\title{Pluggable kNN Episodic Memory for Deep Q-Learning Agents
+in Partially Observable Environments}
+
+\author{
+  Anderson G. A. C. Filho,
+  Esthevan F. da Silva,
+  João A. T. Laner\\
+  Instituto de Informática (INF)\\
+  Universidade Federal do Rio Grande do Sul (UFRGS)\\
+  Porto Alegre, RS, Brazil\\
+  \texttt{anderson.goncalves@ufrgs.br}
+}
+
+\date{November 2026}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}\input{sections/00-abstract}\end{abstract}
+
+\keywords{Deep Reinforcement Learning \and Partial Observability \and
+Episodic Memory \and Transformers \and k-Nearest Neighbours}
+
+\input{sections/01-introduction}
+\input{sections/02-background}
+\input{sections/03-related-work}
+\input{sections/04-method}
+\input{sections/05-experimental-setup}
+\input{sections/06-results}
+\input{sections/07-discussion}
+\input{sections/08-conclusion}
+
+\bibliographystyle{unsrt}
+\bibliography{references}
+
+\end{document}
