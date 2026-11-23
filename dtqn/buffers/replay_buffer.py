@@ -25,6 +25,8 @@ class ReplayBuffer:
         max_episode_steps: int,
         context_len: Optional[int] = 1,
     ):
+        # Short episodes still need enough padding to sample a full context window.
+        max_episode_steps = max(max_episode_steps, context_len)
         self.max_size = buffer_size // max_episode_steps
         self.context_len = context_len
         self.env_obs_length = env_obs_length
@@ -67,7 +69,7 @@ class ReplayBuffer:
             [self.max_size, max_episode_steps, 1],
             dtype=np.bool_,
         )
-        self.episode_lengths = np.zeros([self.max_size], dtype=np.uint8)
+        self.episode_lengths = np.zeros([self.max_size], dtype=np.int32)
 
     def store(
         self,
@@ -137,7 +139,15 @@ class ReplayBuffer:
 
     def sample(
         self, batch_size: int
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    ) -> Tuple[
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+    ]:
         # Exclude the current episode we're in
         valid_episodes = [
             i

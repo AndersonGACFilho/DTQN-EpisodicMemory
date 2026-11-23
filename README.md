@@ -93,6 +93,48 @@ python -m unittest discover -s tests
 
 mypy runs in strict mode. Modules inherited from the DTQN upstream are listed in `pyproject.toml` with their errors ignored; new modules must pass, and a legacy module leaves the list once it does.
 
+## Running Passive T-Maze
+
+Passive T-Maze is available as `PassiveTMaze-v0`. With the project environment
+activated, run this from the repository root:
+
+```bash
+python run.py --model DTQN --envs PassiveTMaze-v0 --corridor-length 10 \
+  --context 50 --device cpu --num-steps 2000 --eval-frequency 500 \
+  --eval-episodes 10 --seed 1 --project-name tmaze-smoke --disable-wandb --verbose
+```
+
+`--corridor-length` defaults to 10 and only affects this environment. The episode
+lasts `corridor_length + 1` steps; increase the length beyond `--context` to test
+dependencies outside the observation window. This runs ordinary DTQN; kNN memory
+integration is tracked in #7. No additional runtime packages are required beyond
+Gym and NumPy already used by the runner.
+
+The port follows [Memory-RL's Passive T-Maze](https://github.com/twni2016/Memory-RL/blob/main/envs/tmaze.py)
+and its [experiment configuration](https://github.com/twni2016/Memory-RL/blob/main/configs/envs/tmaze_passive.py).
+Actions are right/up/left/down (0/1/2/3). The initial observation is `[0, cue]`,
+where cue is -1 or +1; intermediate observations are `[0, 0]`, and the junction
+and branches use `[1, y]`. A correct terminal branch earns 1, an incorrect one
+earns 0, and nonterminal steps that fall behind the shortest route incur `-1/L`.
+The cue is not shown again when returning to the start. Episode seeds are local
+to each environment. There is no graphical renderer in this port.
+
+The runner first collects 50,000 random transitions before training. CSV results
+are written under `policies/<project-name>/PassiveTMaze-v0/`; filenames include
+`_corridor=<L>` to keep lengths separate. Existing policy-saving behavior is
+unchanged: `--save-policy` saves periodically, not at the end of a short run.
+
+Run the environment sanity checks with:
+
+```bash
+python -m unittest tests.test_passive_tmaze -v
+```
+
+The oracle must succeed in every episode. The approximately 50% baseline uses
+correct corridor traversal followed by a random up/down choice; fully random
+navigation generally fails to reach the junction before the deadline. This
+clarifies the random-policy criterion in #6 without changing upstream dynamics.
+
 ## Project management
 
 Work is tracked in the [GitHub Project](https://github.com/users/AndersonGACFilho/projects/19) (Kanban, Roadmap, Goals, Epics, Priorities and one board per person).
