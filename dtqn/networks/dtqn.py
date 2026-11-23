@@ -157,18 +157,12 @@ class DTQN(nn.Module):
         self.history_len = history_len
         self.apply(torch_utils.init_weights)
 
-    def forward(
+    def embed_context(
         self,
         obss: torch.Tensor,
         actions: Optional[torch.Tensor] = None,
-        bag_obss: Optional[torch.Tensor] = None,
-        bag_actions: Optional[torch.Tensor] = None,
     ) -> torch.Tensor:
-        """
-        obss    is  batch x seq_len  x obs_dim
-        actions is  batch x seq_len  x       1
-        bag     is  batch x bag_size x obs_dim
-        """
+        """Embed a local window, including its original action/position conventions."""
         history_len = obss.size(1)
         assert history_len <= self.history_len, (
             "Cannot forward, history is longer than expected."
@@ -193,12 +187,20 @@ class DTQN(nn.Module):
                 action_embed[:, 0, :] = 0.0
             token_embeddings = torch.concat([action_embed, token_embeddings], dim=-1)
 
-        # [batch x seq_len x model_embed] -> [batch x seq_len x model_embed]
-        working_memory = self.transformer_layers(
-            self.dropout(
-                token_embeddings + self.position_embedding()[:, :history_len, :]
-            )
+        return self.dropout(
+            token_embeddings + self.position_embedding()[:, :history_len, :]
         )
+
+    def forward(
+        self,
+        obss: torch.Tensor,
+        actions: Optional[torch.Tensor] = None,
+        bag_obss: Optional[torch.Tensor] = None,
+        bag_actions: Optional[torch.Tensor] = None,
+    ) -> torch.Tensor:
+        """Map a batch of local observation/action windows to action Q-values."""
+        history_len = obss.size(1)
+        working_memory = self.transformer_layers(self.embed_context(obss, actions))
 
         if self.bag_size > 0:
             # [batch x bag_size x action_embed] + [batch x bag_size x obs_embed] -> [batch x bag_size x model_embed]

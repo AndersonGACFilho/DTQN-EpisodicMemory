@@ -34,6 +34,7 @@ class Context:
         self.done_mask = True
         self.timestep = 0
         self.init_hidden = init_hidden
+        self.obs: np.ndarray
 
     def reset(self, obs: np.ndarray):
         """Resets to a fresh context"""

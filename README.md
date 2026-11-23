@@ -44,7 +44,7 @@ The proposal was graded 100/100; the professor's ten comments are mapped to issu
 
 - **Memory during training:** DTQN trains on length-K subsequences sampled from the replay buffer, so the memory must hold the (key, value) pairs of the steps before the window. These are recomputed with the current network under `no_grad` at every training step, with stop-gradient memory as the default ([design note](docs/memory-population.md), #3).
 - **Keys without gradient:** nothing forces the query to retrieve the cue step; the noisy T-Maze and the stop-gradient vs. differentiable ablation test this.
-- **Retrieval diagnostic:** we log whether the cue step is in the top-k at decision time, to separate retrieval failure from usage failure.
+- **Retrieval diagnostic:** #30 specifies logging whether the cue step is in the top-k at decision time, to separate retrieval failure from usage failure; this diagnostic is not yet implemented.
 - **Ablations:** gate, top-k, memory size, key layer, stop-gradient vs. differentiable memory.
 - **Compute budget:** an early pilot estimates GPU-hours before the experiment grid is fixed; the desired but infeasible grid is discussed in the paper.
 
@@ -55,7 +55,24 @@ The memory lives in [`dtqn/networks/knn_memory.py`](dtqn/networks/knn_memory.py)
 - `KNNMemory` is a per-episode FIFO store of per-head (key, value) pairs with exact top-k retrieval by cosine similarity. It holds one memory per batch element, so a training batch can carry the prefixes of different episodes.
 - `KNNAttention` is causal multi-head attention that also attends to the retrieved neighbours and mixes both per head with a learned gate `g_h = sigmoid(b_h)`. With the gate off, or with an empty memory, its output is exactly that of the `nn.MultiheadAttention` it wraps.
 
-Both are configured by `MemoryConfig`. Command-line flags are added when the memory is wired into DTQN (#7).
+Both are configured by `MemoryConfig`. `DTQN-kNN` now connects them to DTQN's
+acting and replay-training paths (#7). The agent caches each newest timestep's
+K/V, moves it into external memory on context eviction, and resets memory per
+episode. Training reconstructs earlier keys from the same replay episode using
+the current network; the Double DQN target reconstructs its own shifted prefix.
+
+Run two small baseline/memory training and final-evaluation jobs:
+
+```bash
+python train_and_eval.py --config experiments/knn-smoke.json \
+  --project-name knn-smoke --device cpu
+```
+
+See [integration instructions and validation](docs/knn-integration.md) for
+single-run commands, population rules, measured update cost and acceptance checks.
+This retains DTQN's full-window local forward; it does not introduce incremental
+local KV caching. A speed or accuracy advantage over increasing context is an
+experimental question, not an assumption.
 
 | Option | Default | Effect |
 |---|---|---|
@@ -71,6 +88,25 @@ The defaults are provisional until the pilot (#11) and the ablations (#22). Unit
 ```bash
 python -m unittest discover -s tests
 ```
+
+The new `train.py` / JSON options are:
+
+| Flag / JSON key | Default | Effect |
+|---|---|---|
+| `--model` / `model` | `DTQN` | Select `DTQN-kNN` for episodic memory |
+| `--memory-enabled` / `memory_enabled` | `true` for `DTQN-kNN` | `--no-memory-enabled` / `false` selects the original network and agent |
+| `--memory-size` / `memory_size` | `256` | FIFO capacity in earlier timesteps |
+| `--memory-top-k` / `memory_top_k` | `8` | Neighbours per query and head |
+| `--memory-layer` / `memory_layer` | `-1` | Selected block, zero-based; -1 is last |
+| `--memory-gate` / `memory_gate` | `true` | `--no-memory-gate` / `false` uses local attention only |
+| `--memory-gate-bias-init` / `memory_gate_bias_init` | `0.0` | Initial per-head sigmoid gate bias |
+| `--memory-stop-grad` / `memory_stop_grad` | `true` | `--no-memory-stop-grad` / `false` enables differentiable prefix K/V for the policy loss |
+
+Memory options are inactive for other models. `DTQN-kNN` requires `bag_size=0`.
+Model saving/loading, trajectories and the existing experiment statistics include
+the new variant. The finite FIFO can evict the cue; memory capacity must cover
+the distance beyond local context. Differentiable K/V do not make hard top-k
+selection differentiable.
 
 ## Development
 
@@ -106,8 +142,8 @@ python run_legacy.py --model DTQN --envs PassiveTMaze-v0 --corridor-length 10 \
 
 `--corridor-length` defaults to 10 and also configures Noisy T-Maze and Associative Corridor. The episode
 lasts `corridor_length + 1` steps; increase the length beyond `--context` to test
-dependencies outside the observation window. This runs ordinary DTQN; kNN memory
-integration is tracked in #7. No additional runtime packages are required beyond
+dependencies outside the observation window. This runs ordinary DTQN; use the
+`DTQN-kNN` workflow above for episodic memory. No additional runtime packages are required beyond
 Gym and NumPy already used by the runner.
 
 The port follows [Memory-RL's Passive T-Maze](https://github.com/twni2016/Memory-RL/blob/main/envs/tmaze.py)
@@ -170,8 +206,8 @@ under `policies/<project-name>/NoisyTMaze-v0/` include
 `_corridor=<L>_noise=<p>_std=<sigma>` so configurations stay separate. Use a fresh
 project name for a fresh run. The flags are not forwarded to Car Flag, Memory
 Cards or clean Passive T-Maze. No additional dependencies or renderer are added.
-This is ordinary DTQN; wiring in kNN memory is still #7 and the multi-seed noisy
-experiment is #21.
+This command runs ordinary DTQN; select `DTQN-kNN` in the new workflow to use
+episodic memory. The multi-seed noisy experiment is #21.
 
 This variant supplies near-cue distractors, not exact duplicates: continuous
 Gaussian samples almost surely differ from exactly +/-1. The initial-step
