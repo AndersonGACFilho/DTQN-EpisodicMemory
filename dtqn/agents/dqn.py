@@ -15,6 +15,7 @@ from utils.context import Context
 from utils.epsilon_anneal import LinearAnneal
 from utils.logging_utils import RunningAverage
 from utils.random import RNG
+from utils.torch_utils import select_action_values
 
 
 class TrainMode(Enum):
@@ -168,7 +169,7 @@ class DqnAgent:
         # Then we gather it and squeeze to [batch-size]
         q_values = self.policy_network(obss)
         # [batch-seq-actions]
-        q_values = q_values.gather(2, actions).squeeze()
+        q_values = select_action_values(q_values, actions).squeeze()
 
         with torch.no_grad():
             # We use DDQN, so the policy network determines which future actions we'd
