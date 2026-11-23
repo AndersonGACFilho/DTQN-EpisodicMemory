@@ -129,7 +129,7 @@ def effective_settings(config: RunConfig, horizon: int) -> Dict[str, Any]:
     params["history"] = min(config.history, params["context"])
     params["max_episode_steps"] = horizon
     inactive: List[str] = []
-    if config.model != "DTQN-kNN" or not config.memory_enabled:
+    if config.model not in {"DTQN-kNN", "DTQN-kNN-cached"} or not config.memory_enabled:
         inactive.extend(key for key in params if key.startswith("memory_"))
     if config.env not in {"PassiveTMaze-v0", "NoisyTMaze-v0", "AssociativeCorridor-v0"}:
         inactive.append("corridor_length")

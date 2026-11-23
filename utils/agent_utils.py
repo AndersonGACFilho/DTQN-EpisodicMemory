@@ -8,6 +8,7 @@ from dtqn.agents.dqn import DqnAgent
 from dtqn.agents.drqn import DrqnAgent
 from dtqn.agents.dtqn import DtqnAgent
 from dtqn.agents.dtqn_knn import KnnDtqnAgent
+from dtqn.agents.dtqn_knn_cached import CachedKnnDtqnAgent
 from dtqn.networks.adrqn import ADRQN
 from dtqn.networks.darqn import DARQN
 from dtqn.networks.dqn import DQN
@@ -21,6 +22,7 @@ MODEL_MAP = {
     "DTQN": DTQN,
     "DTQN-bag": DTQN,
     "DTQN-kNN": DTQNKNN,
+    "DTQN-kNN-cached": DTQNKNN,
     "ADRQN": ADRQN,
     "DRQN": DRQN,
     "DARQN": DARQN,
@@ -31,6 +33,7 @@ AGENT_MAP = {
     "DTQN": DtqnAgent,
     "DTQN-bag": DtqnAgent,
     "DTQN-kNN": KnnDtqnAgent,
+    "DTQN-kNN-cached": CachedKnnDtqnAgent,
     "ADRQN": DrqnAgent,
     "DRQN": DrqnAgent,
     "DARQN": DrqnAgent,
@@ -116,7 +119,8 @@ def get_agent(
     if model_str == "DQN":
         context_len = 1
 
-    using_memory = model_str == "DTQN-kNN" and memory_enabled
+    memory_model = model_str in {"DTQN-kNN", "DTQN-kNN-cached"}
+    using_memory = memory_model and memory_enabled
     memory_options = (
         {"memory_config": memory_config or MemoryConfig()} if using_memory else {}
     )
@@ -160,17 +164,11 @@ def get_agent(
         network_factory = make_model(MODEL_MAP[model_str])
     else:
         network_cls = (
-            DTQN
-            if model_str == "DTQN-kNN" and not using_memory
-            else MODEL_MAP[model_str]
+            DTQN if memory_model and not using_memory else MODEL_MAP[model_str]
         )
         network_factory = make_dtqn(network_cls)
 
-    agent_cls = (
-        DtqnAgent
-        if model_str == "DTQN-kNN" and not using_memory
-        else AGENT_MAP[model_str]
-    )
+    agent_cls = DtqnAgent if memory_model and not using_memory else AGENT_MAP[model_str]
     return agent_cls(
         network_factory,
         buffer_size,

@@ -61,6 +61,12 @@ K/V, moves it into external memory on context eviction, and resets memory per
 episode. Training reconstructs earlier keys from the same replay episode using
 the current network; the Double DQN target reconstructs its own shifted prefix.
 
+`DTQN-kNN-cached` reuses that architecture but saves detached online and target
+K/V during collection and gathers them during replay without recomputation.
+Entries are never refreshed after weight updates. See the
+[cached variant](docs/knn-cached.md) for commands, storage costs and the staleness
+tradeoff. Both variants work with the train/eval scripts and JSON sweeps.
+
 Run two small baseline/memory training and final-evaluation jobs:
 
 ```bash
@@ -93,8 +99,8 @@ The new `train.py` / JSON options are:
 
 | Flag / JSON key | Default | Effect |
 |---|---|---|
-| `--model` / `model` | `DTQN` | Select `DTQN-kNN` for episodic memory |
-| `--memory-enabled` / `memory_enabled` | `true` for `DTQN-kNN` | `--no-memory-enabled` / `false` selects the original network and agent |
+| `--model` / `model` | `DTQN` | Select `DTQN-kNN` for fresh replay K/V or `DTQN-kNN-cached` for collection-time K/V |
+| `--memory-enabled` / `memory_enabled` | `true` for both kNN variants | `--no-memory-enabled` / `false` selects the original network and agent |
 | `--memory-size` / `memory_size` | `256` | FIFO capacity in earlier timesteps |
 | `--memory-top-k` / `memory_top_k` | `8` | Neighbours per query and head |
 | `--memory-layer` / `memory_layer` | `-1` | Selected block, zero-based; -1 is last |
@@ -102,7 +108,8 @@ The new `train.py` / JSON options are:
 | `--memory-gate-bias-init` / `memory_gate_bias_init` | `0.0` | Initial per-head sigmoid gate bias |
 | `--memory-stop-grad` / `memory_stop_grad` | `true` | `--no-memory-stop-grad` / `false` enables differentiable prefix K/V for the policy loss |
 
-Memory options are inactive for other models. `DTQN-kNN` requires `bag_size=0`.
+Memory options are inactive for other models. Both kNN variants require `bag_size=0`.
+`DTQN-kNN-cached` additionally requires `memory_stop_grad=true`.
 Model saving/loading, trajectories and the existing experiment statistics include
 the new variant. The finite FIFO can evict the cue; memory capacity must cover
 the distance beyond local context. Differentiable K/V do not make hard top-k
