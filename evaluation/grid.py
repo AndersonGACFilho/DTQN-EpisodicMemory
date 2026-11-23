@@ -18,6 +18,7 @@ EVAL_SEED_OFFSET = 10_000
 FIRST_TRAIN_SEED = 1
 # Owned by the evaluation protocol below, so they cannot appear in "parameters"
 PROTOCOL_KEYS = {"training_seed", "eval_seed", "eval_episodes"}
+REQUIRED_PARAMETERS = {"model", "env", "num_steps"}
 SPEC_KEYS = {
     "parameters",
     "train_seeds",
@@ -97,7 +98,7 @@ def load_grid_spec(path: Path, train_seed_count: Optional[int] = None) -> GridSp
         raise ValueError(
             f"Set {sorted(owned)} through the protocol keys, not parameters"
         )
-    parameters = parse_grid(raw["parameters"], {"model", "env", "num_steps"})
+    parameters = parse_grid(raw["parameters"], REQUIRED_PARAMETERS)
     spec = GridSpec(
         parameters=parameters,
         train_seed_count=_positive_int(raw, "train_seeds"),
