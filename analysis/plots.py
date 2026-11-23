@@ -8,6 +8,7 @@ import matplotlib
 matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt  # noqa: E402
+import numpy as np  # noqa: E402
 import seaborn as sns  # noqa: E402
 from matplotlib.figure import Figure  # noqa: E402
 from rliable import plot_utils  # noqa: E402
@@ -41,14 +42,17 @@ def plot_aggregates(
     estimates: Estimates, metric_names: Sequence[str], colors: Colors
 ) -> Figure:
     points, intervals = estimates
-    figure, _ = plot_utils.plot_interval_estimates(
+    # rliable places a shared x label at a fixed height that overlaps short figures
+    figure, axes = plot_utils.plot_interval_estimates(
         points,
         intervals,
         metric_names=list(metric_names),
         algorithms=list(colors),
         colors=colors,
-        xlabel=SCORE_LABEL,
+        xlabel="",
     )
+    for axis in np.atleast_1d(axes):
+        axis.set_xlabel(SCORE_LABEL, fontsize="large")
     return figure
 
 
