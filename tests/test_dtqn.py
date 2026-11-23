@@ -1,5 +1,6 @@
 import unittest
 from typing import Any, Dict, List
+from unittest.mock import patch
 
 import numpy as np
 import torch
@@ -72,6 +73,58 @@ class TestDTQN(unittest.TestCase):
 
 
 class TestReplayBuffer(unittest.TestCase):
+    def test_episode_shorter_than_context_is_padded(self) -> None:
+        buffer = ReplayBuffer(
+            buffer_size=100,
+            env_obs_length=1,
+            obs_mask=-5,
+            max_episode_steps=3,
+            context_len=10,
+        )
+        buffer.store_obs(np.array([0.0]))
+        for t in range(1, 4):
+            buffer.store(
+                np.array([float(t)]),
+                np.array([0]),
+                np.array([0.0]),
+                np.array([t == 3]),
+                t,
+            )
+        buffer.flush()
+        obss, _, _, next_obss, _, dones, lengths = buffer.sample(1)
+        self.assertEqual(obss.shape, (1, 10, 1))
+        np.testing.assert_array_equal(obss[0, :4, 0], [0, 1, 2, 3])
+        np.testing.assert_array_equal(obss[0, 4:, 0], -5)
+        np.testing.assert_array_equal(next_obss[0, :3, 0], [1, 2, 3])
+        self.assertTrue(dones[0, 2:, 0].all())
+        self.assertEqual(lengths[0, 0], 3)
+
+    def test_long_episode_can_sample_near_the_end(self) -> None:
+        max_steps = 301
+        buffer = ReplayBuffer(
+            buffer_size=4 * max_steps,
+            env_obs_length=1,
+            obs_mask=-1,
+            max_episode_steps=max_steps,
+            context_len=50,
+        )
+        buffer.store_obs(np.array([0.0]))
+        for t in range(1, max_steps + 1):
+            buffer.store(
+                np.array([float(t)]),
+                np.array([0]),
+                np.array([0.0]),
+                np.array([t == max_steps]),
+                t,
+            )
+        buffer.flush()
+        self.assertEqual(buffer.episode_lengths[0], max_steps)
+        with patch("dtqn.buffers.replay_buffer.random.randint", return_value=251):
+            obss, _, _, next_obss, _, dones, _ = buffer.sample(1)
+        np.testing.assert_array_equal(obss[0, :, 0], np.arange(251, 301))
+        self.assertEqual(next_obss[0, -1, 0], 301)
+        self.assertTrue(dones[0, -1, 0])
+
     def test_sampled_windows_stay_inside_one_episode(self) -> None:
         max_steps = 20
         buffer = ReplayBuffer(

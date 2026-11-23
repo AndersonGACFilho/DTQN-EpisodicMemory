@@ -25,6 +25,8 @@ class ReplayBuffer:
         max_episode_steps: int,
         context_len: Optional[int] = 1,
     ):
+        # Short episodes still need enough padding to sample a full context window.
+        max_episode_steps = max(max_episode_steps, context_len)
         self.max_size = buffer_size // max_episode_steps
         self.context_len = context_len
         self.env_obs_length = env_obs_length
@@ -67,7 +69,7 @@ class ReplayBuffer:
             [self.max_size, max_episode_steps, 1],
             dtype=np.bool_,
         )
-        self.episode_lengths = np.zeros([self.max_size], dtype=np.uint8)
+        self.episode_lengths = np.zeros([self.max_size], dtype=np.int32)
 
     def store(
         self,
@@ -137,7 +139,35 @@ class ReplayBuffer:
 
     def sample(
         self, batch_size: int
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    ) -> Tuple[
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+    ]:
+        return self.sample_with_metadata(batch_size)[:7]
+
+    def sample_with_metadata(
+        self, batch_size: int
+    ) -> Tuple[
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+    ]:
+        """The normal sample plus its episode rows and local-window starts.
+
+        Memory reconstruction reads only earlier steps from these same rows.
+        Returning metadata must not change baseline sampling or its RNG draws.
+        """
         # Exclude the current episode we're in
         valid_episodes = [
             i
@@ -166,6 +196,8 @@ class ReplayBuffer:
             self.actions[episode_idxes, 1 + transitions],
             self.dones[episode_idxes, transitions],
             np.clip(self.episode_lengths[episode_idxes], 0, self.context_len),
+            episode_idxes.reshape(-1),
+            transition_starts,
         )
 
     # TODO:

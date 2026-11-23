@@ -1,10 +1,11 @@
 # Environment guide
 
-This guide documents the repository's complete configured environment inventory,
-including implementations on the three environment feature branches. It records
-task definitions and experimental roles; it does not report new learning results.
-The inventory was checked on **2026-11-22** against `main` at `899371d` and the
-source snapshots listed below.
+This guide documents the repository's complete configured environment inventory
+and the current train/final-evaluation workflow. It records task definitions and
+experimental roles; it does not report new learning results. The inventory and
+interfaces were checked on **2026-11-23** against `main` at `ed83da1`, including
+the merged Passive/Noisy T-Maze, Associative Corridor, experiment harness and
+both DTQN kNN variants.
 
 Every family uses the same seven fields: **Identity and availability**, **Paper-ready
 description**, **Task mechanics**, **Interface**, **Configuration**, **Usage**, and
@@ -22,9 +23,9 @@ registry are outside this inventory.
 
 | Family | Choices | Code availability in the checked snapshot |
 |---|---:|---|
-| [Passive T-Maze](#passive-t-maze) | 1 | `feature/6-passive-tmaze`, commit `d8a6a99` |
-| [Noisy T-Maze](#noisy-t-maze) | 1 | `feature/20-noisy-tmaze`, commit `23b7822` |
-| [Associative Corridor](#associative-corridor) | 1 | `feature/associative-corridor`, commit `00a0e71` |
+| [Passive T-Maze](#passive-t-maze) | 1 | `main`, local implementation |
+| [Noisy T-Maze](#noisy-t-maze) | 1 | `main`, local implementation |
+| [Associative Corridor](#associative-corridor) | 1 | `main`, local implementation |
 | [Car Flag](#car-flag) | 1 | `main`, local implementation |
 | [Memory Cards](#memory-cards) | 1 | `main`, local implementation |
 | [GridVerse Memory](#gridverse-memory) | 6 | `main`, YAML configurations and optional provider |
@@ -38,53 +39,118 @@ registry are outside this inventory.
 | [HeavenHell](#heavenhell) | 1 | Optional `gym_pomdps` registration referenced by the README |
 
 `main` in this table means the checked source snapshot, not a promise that optional
-dependencies are installed. The documentation branch adds no environment code.
-For a feature-branch example, use that branch's checkout or existing worktree;
-`git worktree list` shows local locations. Source links for the three new
-implementations are pinned to their commits so this guide remains auditable.
+dependencies are installed. All five project tasks are available from one current
+checkout; no environment feature-branch switch is required. Source links for the
+three added implementations are pinned to the audited `main` commit.
 
 ## Shared execution and evaluation conventions
 
-- Run examples from the applicable **code checkout's repository root**, with the
-  project's virtual environment activated. New T-Maze flags are unavailable on
-  the checked `main` snapshot.
-- The runner uses legacy Gym: `reset()` returns an observation and `step()` returns
-  `(observation, reward, done, info)`. The project environment branches were checked
-  with Python 3.10, NumPy 1.22.4, Gym 0.23.1, and CPU Torch 2.6.0; the inherited
-  runtime requirements instead pin Gym 0.18.0 and Torch 1.11.0.
-- `--context K` is the observation-window size; `--history` controls which Q-value
-  predictions contribute to training. The examples use ordinary DTQN: the kNN
-  module exists, but its agent integration is a separate task, #7.
-- The runner prepopulates replay with **50,000 random transitions** before its
-  requested training steps. Evaluation episodes are separate and greedy.
-- Local CSVs live under `policies/<project-name>/<env>/`. Use a fresh project name
-  for a fresh run because the existing checkpoint logic may otherwise attempt
-  to resume. `--save-policy` saves periodically, not automatically at the end of
-  every short run; `--render` requires a compatible saved policy and renderer.
-- On the checked `main`, reported success is terminal `info['is_success']` **or**
-  positive episode return. Wrappers that merely forward provider info do not
-  establish a task-specific success metric. Verify this mapping before interpreting
-  optional-provider results as scientific success rates.
-- Associative Corridor alone opts into **explicit terminal success** on its
-  branch. A positive partial return followed by failure is not a successful episode.
-- `--max-episode-steps` supplies replay-allocation metadata when the environment
-  has no horizon; it does **not** install a TimeLimit wrapper. Also, the checked
-  `main` stores replay episode lengths as `uint8`; the Passive T-Maze branch fixes
-  this to `int32`. Do not treat episodes over 255 steps on the older code as a
-  verified configuration.
+- Run from the **repository root**, with the project's virtual environment
+  activated. The installed validation stack is Python 3.10.21, NumPy 1.22.4,
+  Gym 0.23.1 and Torch 2.7.1+cu128; this audit uses CPU. The inherited runtime
+  requirements instead pin Gym 0.18.0 and Torch 1.11.0. This is still the legacy
+  Gym API: `reset()` returns an observation and `step()` returns
+  `(observation, reward, done, info)`.
+- `train.py` trains **one configuration**, without intermediate evaluations,
+  and always saves its final `model.pt`. `eval.py` loads that model and its saved
+  environment settings for greedy episodes without learning. Both accept CLI
+  values; only `train_and_eval.py` reads a JSON grid and loops over its combinations.
+- Current flags are `--env` and `--training-seed`. `run.py` was renamed to
+  `run_legacy.py`; its plural `--envs`, `--seed`, periodic evaluation, W&B and
+  checkpoint flags belong to that older workflow. The new scripts use local
+  logging and need no `--disable-wandb`, `--save-policy` or `--eval-frequency`.
+- `--context K` sets the local observation-window capacity. `--history` selects
+  how many final token predictions contribute directly to TD loss; it does not
+  limit attention. Values above K are clipped. `DTQN` is the baseline;
+  `DTQN-kNN` rebuilds external replay K/V, and `DTQN-kNN-cached` reuses detached
+  collection-time K/V. See the [integration](knn-integration.md) and
+  [cached-memory](knn-cached.md) guides for options and costs. Both require
+  `bag_size=0`; the cached variant requires `memory_stop_grad=true`.
+- `--prefill-steps` defaults to **50,000 additional random interactions**, finishing
+  the final prefill episode. `--num-steps` then counts training interactions
+  exactly; an unfinished final episode is recorded as partial. The examples use
+  a smaller explicit prefill and batch for execution checks, not learning claims.
+  Updates start only once enough completed replay episodes exist.
+- `--max-episode-steps N` on `train.py` installs a real outer **TimeLimit** and
+  sets the replay horizon; it can shorten the native limit but cannot extend a
+  provider's internal deadline. Otherwise a finite native horizon is required.
+  Replay episode lengths are `int32`; the old 255-step storage limit is fixed.
+- Reported success is terminal `info['is_success']` **or** positive episode
+  return, except Associative Corridor requires **explicit terminal success**.
+  Positive partial return followed by failure is not success there. Forwarded
+  provider info does not establish a task-specific scientific success metric;
+  verify the fallback before interpreting optional-provider success rates.
 
-Previously recorded CPU startup/training checks cover Car Flag, Memory Cards and
-the new environment implementations; those checks do not establish learned
-performance. GridVerse, MiniHack and `gym_pomdps` were **not installed locally**
-during this documentation audit. Their examples below are conditional on the
-stated provider and compatibility requirements and were not executed here.
+Each family below gives one current training example. Evaluate its final policy
+by replacing the paths with that example's output directory:
+
+```bash
+python eval.py --model-path results/passive-example/train/model.pt \
+  --eval-episodes 100 --eval-seed 10000 --device cpu \
+  --output-dir results/passive-example/eval --verbose
+```
+
+Use new/empty output directories. Training writes `model.pt`,
+`train_metadata.json`, `train_episodes.csv`, `train_losses.csv` and
+`train_trajectories.jsonl.gz`; evaluation writes `eval_metadata.json`,
+`eval_episodes.csv` and `eval_trajectories.jsonl.gz`. Traces record every prefill,
+training and evaluation action with observations, rewards, termination/truncation
+and available world-state snapshots. Metadata records settings, timing and GPU
+memory. A saved final policy does not reproduce the changing policies used
+earlier in training; the saved traces preserve those interactions.
+
+For a comparison, save this example as `experiments/environment-comparison.json`:
+
+```json
+{
+  "model": ["DTQN", "DTQN-kNN", "DTQN-kNN-cached"],
+  "env": ["PassiveTMaze-v0"],
+  "context": [14],
+  "history": [14],
+  "corridor_length": [15],
+  "memory_size": [32],
+  "memory_top_k": [4],
+  "batch": [4],
+  "prefill_steps": [128],
+  "num_steps": [32000],
+  "training_seed": [1, 2, 3, 4, 5],
+  "eval_episodes": [100],
+  "eval_seed": [10000]
+}
+```
+
+```bash
+python train_and_eval.py --config experiments/environment-comparison.json \
+  --project-name environment-comparison --device cpu --dry-run
+python train_and_eval.py --config experiments/environment-comparison.json \
+  --project-name environment-comparison --device cpu
+```
+
+Every list participates in the Cartesian product: this grid gives 15 train/eval
+pairs. Batch outputs are under `results/<project-name>/<batch>/`, with per-run
+artifacts, `runs.csv` and `summary.csv` containing across-training-seed statistics.
+Environment and memory settings unused by a model are recorded as inactive.
+The shared evaluation seed fixes initial evaluation randomness across training
+seeds; it is separate from initialization/exploration/replay randomness.
+
+Neither new CLI renders episodes, and `model.pt` is not the legacy runner's
+checkpoint format. Use saved trajectories for subsequent plotting or a provider's
+renderer in separate code. The per-family rendering status below describes the
+environment API, not an implemented playback command.
+
+GridVerse, MiniHack and `gym_pomdps` were **not installed locally** during this
+audit. Their commands are checked against the current CLI and source inventory,
+but execution remains conditional on the stated provider and compatibility
+requirements. The pinned MiniHack sources and unpinned POMDP provider references
+describe the versions inspected for the original guide; no provider upgrade is
+implied by refreshing this workflow.
 
 ## Passive T-Maze
 
 ### Identity and availability
 
 ID: `PassiveTMaze-v0`. Source: [Passive T-Maze implementation][passive-code],
-on `feature/6-passive-tmaze` at `d8a6a99`. Requires the runner's existing Gym and
+on the audited `main` snapshot. Requires the runner's existing Gym and
 NumPy dependencies; optional GridVerse/MiniHack/POMDP packages are unnecessary.
 
 ### Paper-ready description
@@ -132,16 +198,17 @@ probability `4**(-(L + 1))`, because the deadline permits only the shortest rout
 
 ### Usage
 
-Run from the Passive T-Maze branch (or a checkout containing its implementation):
+Run from the current repository root:
 
 ```bash
-python run.py --model DTQN --envs PassiveTMaze-v0 --corridor-length 100 \
-  --context 50 --history 50 --device cpu --num-steps 2000 \
-  --eval-frequency 500 --eval-episodes 10 --seed 1 \
-  --project-name passive-example --disable-wandb --verbose
+python train.py --model DTQN --env PassiveTMaze-v0 \
+  --corridor-length 100 --context 50 --history 50 \
+  --prefill-steps 128 --num-steps 2000 --batch 4 --training-seed 1 \
+  --device cpu --output-dir results/passive-example/train --verbose
 ```
 
-Output names include `_corridor=<L>`. **Rendering:** not implemented in this port.
+Output: `results/passive-example/train/model.pt` and the shared training artifacts.
+**Rendering:** not implemented in this port.
 
 ### References
 
@@ -153,7 +220,7 @@ Output names include `_corridor=<L>`. **Rendering:** not implemented in this por
 ### Identity and availability
 
 ID: `NoisyTMaze-v0`. Source: [Noisy T-Maze implementation][noisy-code], on
-`feature/20-noisy-tmaze` at `23b7822`, building on the Passive T-Maze port. Requires
+`main`, building on the Passive T-Maze port. Requires
 only the same runtime dependencies as that port.
 
 ### Paper-ready description
@@ -195,17 +262,18 @@ not the two means. Neither parameter changes the task's reward structure.
 
 ### Usage
 
-Run from the noisy implementation branch:
+Run from the current repository root:
 
 ```bash
-python run.py --model DTQN --envs NoisyTMaze-v0 --corridor-length 15 \
-  --noise-level 0.5 --noise-std 0.1 --context 14 --history 14 --device cpu \
-  --num-steps 2000 --eval-frequency 500 --eval-episodes 10 --seed 1 \
-  --project-name noisy-example --disable-wandb --verbose
+python train.py --model DTQN --env NoisyTMaze-v0 \
+  --corridor-length 15 --noise-level 0.5 --noise-std 0.1 --context 14 --history 14 \
+  --prefill-steps 128 --num-steps 2000 --batch 4 --training-seed 1 \
+  --device cpu --output-dir results/noisy-example/train --verbose
 ```
 
-Output names include `_corridor=<L>_noise=<p>_std=<sigma>`. **Rendering:** no
-renderer is added. This variant is selected by its own ID; noise flags do not
+Output: `results/noisy-example/train/model.pt`; metadata stores corridor and
+noise settings. **Rendering:** no renderer is added. This variant is selected
+by its own ID; noise flags do not
 modify Car Flag, Memory Cards or clean Passive T-Maze.
 
 ### References
@@ -220,7 +288,7 @@ The Gaussian extension is this project's variant, not a result from that paper.
 ### Identity and availability
 
 ID: `AssociativeCorridor-v0`. Source: [Associative Corridor implementation][assoc-code],
-on `feature/associative-corridor` at `00a0e71`. This is the new four-decision
+on `main`. This is the four-decision
 variant, not the single-junction task from Memory-RL. No extra runtime package is
 required beyond Gym and NumPy used by the runner.
 
@@ -257,7 +325,7 @@ zero otherwise. Right `0` advances at instructions and blanks. Up `1` or Down `3
 answers a query and advances when correct; a correct query gives +1. Every valid
 but incorrect action, including Left `2`, terminates immediately with reward 0.
 Success requires all four correct answers; its return is 4. A failed episode can
-retain rewards from earlier answers, so its branch's evaluator explicitly uses
+retain rewards from earlier answers, so the evaluator explicitly uses
 `is_success`, rather than positive return, for this environment alone.
 
 ### Configuration
@@ -276,17 +344,18 @@ success is `1/16`, not 1/2; per-answer accuracy is a different metric.
 
 ### Usage
 
-Run from the associative implementation branch, separately from tasks with
-two-dimensional observations:
+Run as its own training configuration; its six-value observations differ from
+the two-value T-Maze observations:
 
 ```bash
-python run.py --model DTQN --envs AssociativeCorridor-v0 --corridor-length 100 \
-  --context 14 --history 14 --device cpu --num-steps 2000 \
-  --eval-frequency 500 --eval-episodes 10 --seed 1 \
-  --project-name associative-example --disable-wandb --verbose
+python train.py --model DTQN --env AssociativeCorridor-v0 \
+  --corridor-length 100 --context 14 --history 14 \
+  --prefill-steps 128 --num-steps 2000 --batch 4 --training-seed 1 \
+  --device cpu --output-dir results/associative-example/train --verbose
 ```
 
-Output names include `_corridor=<L>`. **Rendering:** not implemented.
+Output: `results/associative-example/train/model.pt`; metadata stores corridor
+length. **Rendering:** not implemented.
 
 ### References
 
@@ -338,10 +407,10 @@ The examples use the upstream recommendation `--in-embed 64` and `K=50`.
 ### Usage
 
 ```bash
-python run.py --model DTQN --envs DiscreteCarFlag-v0 --in-embed 64 \
-  --context 50 --history 50 --device cpu --num-steps 2000 \
-  --eval-frequency 500 --eval-episodes 10 --seed 1 \
-  --project-name car-flag-example --disable-wandb --verbose
+python train.py --model DTQN --env DiscreteCarFlag-v0 \
+  --in-embed 64 --context 50 --history 50 \
+  --prefill-steps 128 --num-steps 2000 --batch 4 --training-seed 1 \
+  --device cpu --output-dir results/car-flag-example/train --verbose
 ```
 
 **Rendering:** the class has an inherited Gym/Pyglet graphical renderer. It uses
@@ -395,9 +464,10 @@ window, including its initial observation at the final action decision.
 ### Usage
 
 ```bash
-python run.py --model DTQN --envs Memory-5-v0 --context 50 --history 50 \
-  --device cpu --num-steps 2000 --eval-frequency 500 --eval-episodes 10 \
-  --seed 1 --project-name cards-example --disable-wandb --verbose
+python train.py --model DTQN --env Memory-5-v0 \
+  --context 50 --history 50 \
+  --prefill-steps 128 --num-steps 2000 --batch 4 --training-seed 1 \
+  --device cpu --output-dir results/cards-example/train --verbose
 ```
 
 **Rendering:** no renderer is implemented in the local class.
@@ -446,11 +516,11 @@ view covers 2 x 3 cells. The local wrapper sums grid channels 0 and 2
 remaining channel. Reward components are +5 for a matching exit, -5 for a wrong
 exit, and a living reward of -0.05. Reaching an exit terminates; otherwise the
 repository caps the episode at 250. Provider info is forwarded unchanged, so
-reported success follows the shared legacy evaluator rule.
+reported success follows the shared evaluator rule.
 
 ### Configuration
 
-Select a filename from the table through `--envs`; the factory resolves it under
+Select a filename from the table through `--env`; the factory resolves it under
 `envs/gridverse/`. Shape differs across these files; colors, view area, actions
 and reward components remain the same. `--corridor-length` does not configure
 these tasks. Their presence on disk does not install the provider.
@@ -461,9 +531,9 @@ After installing the optional provider using the README's instructions (not
 executed locally during this audit):
 
 ```bash
-python run.py --model DTQN --envs gv_memory.7x7.yaml --device cpu \
-  --num-steps 2000 --eval-frequency 500 --eval-episodes 10 --seed 1 \
-  --project-name gv-memory-example --disable-wandb --verbose
+python train.py --model DTQN --env gv_memory.7x7.yaml \
+  --prefill-steps 128 --num-steps 2000 --batch 4 --training-seed 1 \
+  --device cpu --output-dir results/gv-memory-example/train --verbose
 ```
 
 **Rendering:** delegated to the optional provider through the wrappers; not
@@ -505,7 +575,7 @@ through the one associated with the beacon color.
 The six action indices, categorical 2 x 3 observation processing, reward
 components (+5/-5 exit rewards and -0.05 living reward), and forwarded info are
 the same as [GridVerse Memory](#gridverse-memory). An exit ends the episode;
-the repository also applies a 250-step TimeLimit. The legacy reported-success
+the repository also applies a 250-step TimeLimit. The reported-success
 rule must be distinguished from the task's matching-exit definition.
 
 ### Configuration
@@ -519,9 +589,9 @@ and K must both be recorded when discussing whether recall exceeds the window.
 With the optional provider installed; this example was not executed locally:
 
 ```bash
-python run.py --model DTQN --envs gv_memory_four_rooms.7x7.yaml --device cpu \
-  --num-steps 2000 --eval-frequency 500 --eval-episodes 10 --seed 1 \
-  --project-name gv-rooms-example --disable-wandb --verbose
+python train.py --model DTQN --env gv_memory_four_rooms.7x7.yaml \
+  --prefill-steps 128 --num-steps 2000 --batch 4 --training-seed 1 \
+  --device cpu --output-dir results/gv-rooms-example/train --verbose
 ```
 
 **Rendering:** provider-dependent, delegated through wrappers and not verified here.
@@ -553,7 +623,7 @@ this audit. The sources below use the matching MiniHack version.
 - Reaching the down staircase is the default navigation objective. Provider
   termination can also occur before the repository's outer TimeLimit. The
   wrapper forwards info rather than translating `end_status` into `is_success`;
-  the runner's reported success therefore uses its legacy fallback.
+  the runner's reported success therefore uses the shared fallback.
 - Registration suffixes and sizes choose fixed wrapper options. There are no
   CLI flags for crop size, lighting, or changing the task's action set.
 
@@ -594,22 +664,22 @@ to the staircase in a 5 x 5 or 15 x 15 room.
 Use the [MiniHack conventions](#minihack-provider-conventions): eight compass
 actions, the table's crop encoding, navigation reward components plus time
 penalties, and provider termination. The table shows both time caps; the first
-one reached ends the episode. Success reporting follows the shared legacy rule.
+one reached ends the episode. Success reporting follows the shared rule.
 
 ### Configuration
 
 Select the exact ID to choose size and crop type. Default provider room limits
-are `size * 20`, matching these outer registrations. Episodes over 255 steps
-also require the replay length fix described in the shared execution conventions.
+are `size * 20`, matching these outer registrations. Replay lengths are now
+`int32`, so the former 255-step storage limit does not apply.
 
 ### Usage
 
 Conditional on the optional dependencies; not executed locally:
 
 ```bash
-python run.py --model DTQN --envs MH-Room-5-v0 --device cpu \
-  --num-steps 2000 --eval-frequency 500 --eval-episodes 10 --seed 1 \
-  --project-name mh-room-example --disable-wandb --verbose
+python train.py --model DTQN --env MH-Room-5-v0 \
+  --prefill-steps 128 --num-steps 2000 --batch 4 --training-seed 1 \
+  --device cpu --output-dir results/mh-room-example/train --verbose
 ```
 
 **Rendering:** delegated to MiniHack/NLE; no custom renderer is added by the local
@@ -654,22 +724,22 @@ single instruction followed by an otherwise blank corridor.
 The [MiniHack conventions](#minihack-provider-conventions) apply: eight compass
 actions, the listed glyph/pixel crops, default navigation rewards plus time
 penalties, provider termination and the table's outer cap. Reported success is
-the legacy flag-or-positive-return rule rather than a new local classifier.
+the flag-or-positive-return rule rather than a new local classifier.
 
 ### Configuration
 
 Choose 5 x 5 or 15 x 15 through the ID and use its suffix for observation type.
 Lighting and randomization are provider-constructor settings, not runner flags.
-The 300-step cases need the replay length fix for reliable long episodes.
+The 300-step cases use the current `int32` replay-length storage.
 
 ### Usage
 
 Conditional on the optional dependencies; not executed locally:
 
 ```bash
-python run.py --model DTQN --envs MH-DarkRoom-5-v1 --device cpu \
-  --num-steps 2000 --eval-frequency 500 --eval-episodes 10 --seed 1 \
-  --project-name mh-dark-example --disable-wandb --verbose
+python train.py --model DTQN --env MH-DarkRoom-5-v1 \
+  --prefill-steps 128 --num-steps 2000 --batch 4 --training-seed 1 \
+  --device cpu --output-dir results/mh-dark-example/train --verbose
 ```
 
 **Rendering:** delegated to MiniHack/NLE; not verified with the local stack.
@@ -721,9 +791,9 @@ task size. Neither maze dimensions nor observation crop are set by T-Maze flags.
 Conditional on the optional dependencies; not executed locally:
 
 ```bash
-python run.py --model DTQN --envs MH-Maze-9-v0 --device cpu \
-  --num-steps 2000 --eval-frequency 500 --eval-episodes 10 --seed 1 \
-  --project-name mh-maze-example --disable-wandb --verbose
+python train.py --model DTQN --env MH-Maze-9-v0 \
+  --prefill-steps 128 --num-steps 2000 --batch 4 --training-seed 1 \
+  --device cpu --output-dir results/mh-maze-example/train --verbose
 ```
 
 **Rendering:** delegated to MiniHack/NLE; not verified locally.
@@ -763,7 +833,7 @@ that mapped provider setting despite its repository name.
 ### Interface
 
 The [MiniHack conventions](#minihack-provider-conventions) apply to compass
-actions, glyph/pixel processing, reward components and legacy success reporting.
+actions, glyph/pixel processing, reward components and shared success reporting.
 The effective numeric cap is 180 steps, bounded by the outer registration before
 the provider's 200-step limit.
 
@@ -778,9 +848,9 @@ No code or registration is changed by this documentation.
 Conditional on the optional dependencies; not executed locally:
 
 ```bash
-python run.py --model DTQN --envs MH-MazeMap-9-v1 --device cpu \
-  --num-steps 2000 --eval-frequency 500 --eval-episodes 10 --seed 1 \
-  --project-name mh-mapped-example --disable-wandb --verbose
+python train.py --model DTQN --env MH-MazeMap-9-v1 \
+  --prefill-steps 128 --num-steps 2000 --batch 4 --training-seed 1 \
+  --device cpu --output-dir results/mh-mapped-example/train --verbose
 ```
 
 **Rendering:** delegated to MiniHack/NLE; not verified locally.
@@ -835,9 +905,9 @@ the 180-step registration is not evidence that 180 actions are actually availabl
 Conditional on the optional dependencies; not executed locally:
 
 ```bash
-python run.py --model DTQN --envs MH-maze-v1 --device cpu \
-  --num-steps 2000 --eval-frequency 500 --eval-episodes 10 --seed 1 \
-  --project-name mh-custom-example --disable-wandb --verbose
+python train.py --model DTQN --env MH-maze-v1 \
+  --prefill-steps 128 --num-steps 2000 --batch 4 --training-seed 1 \
+  --device cpu --output-dir results/mh-custom-example/train --verbose
 ```
 
 **Rendering:** delegated to MiniHack/NLE; not verified locally.
@@ -856,14 +926,16 @@ That provider requires [rl-parsers][rl-parsers]. Its inspected source is version
 
 The provider returns a categorical observation and adds one extra initial
 observation symbol. Episodic termination follows model `reset` transitions.
-Its registrations do not impose a numeric TimeLimit, and the local factory does
-not add one for these Gym IDs. Merely passing `--max-episode-steps` sets replay
-capacity metadata, without bounding the rollout: longer trajectories can exceed
-that allocation. A bounded registration/wrapper with a matching replay allocation
-is needed before claiming reliable full training through the current runner.
+Its registrations do not impose a numeric TimeLimit. The current `train.py`
+requires a finite horizon and installs a real outer TimeLimit when given
+`--max-episode-steps`. The examples explicitly choose **250 steps** as an
+execution-check cap, not a paper-recommended horizon or a property of the models.
+The saved policy retains that cap for evaluation. A provider's own termination
+can end an episode earlier.
 
-The examples below are **CPU interface checks, not certified training commands**.
-No provider installation, horizon-wrapper change, or experiment result is implied.
+These optional-provider commands were parsed but not executed locally. Provider
+installation/API compatibility is still required; the selected cap does not
+establish that the task has been solved or its success metric validated.
 
 ## Hallway
 
@@ -894,23 +966,24 @@ after adding its initial symbol; these are category IDs, not coordinates. The
 model rewards transitions into its four goal states with +1, otherwise zero by
 default. Episodic reset transitions end the episode. Provider info contains
 `reward_cat`, not a newly supplied `is_success` flag; reported success uses the
-runner's legacy return fallback.
+runner's return fallback.
 
 ### Configuration
 
-There is no repository-defined numeric horizon. Supply a genuinely bounded
-provider registration before training; the shared `--max-episode-steps` flag alone
-is insufficient. The upstream README recommends `--in-embed 64` when training a
-compatible bounded setup. Model-specific dynamics are defined in the `.pomdp`
-file, not through T-Maze flags.
+There is no native numeric horizon in the inspected provider registration.
+Use `train.py --max-episode-steps N` to install a bounded rollout; N=250 below is
+only an example cap. The upstream README recommends `--in-embed 64`.
+Model-specific dynamics are defined in the `.pomdp` file, not through T-Maze flags.
 
 ### Usage
 
-After installing the optional provider and parser, this checks its CPU interface
-without starting replay collection (not executed locally):
+After installing the optional provider and parser; not executed locally:
 
 ```bash
-python -c "import gym, gym_pomdps; e = gym.make('POMDP-hallway-episodic-v0'); e.seed(1); print(e.reset(), e.observation_space, e.action_space); e.close()"
+python train.py --model DTQN --env POMDP-hallway-episodic-v0 \
+  --max-episode-steps 250 --in-embed 64 --context 50 --history 50 \
+  --prefill-steps 128 --num-steps 2000 --batch 4 --training-seed 1 \
+  --device cpu --output-dir results/hallway-example/train --verbose
 ```
 
 **Rendering:** the inspected provider does not register a Hallway renderer.
@@ -949,21 +1022,25 @@ North `0`, South `1`, East `2`, West `3`, and 15 model observations. The provide
 adds an initial symbol, yielding `Discrete(16)` observations. Heaven yields a
 +1 reward component and hell -1; other rewards default to zero. Episodic reset
 transitions terminate. The provider forwards `reward_cat` info and the runner
-uses its legacy reported-success rule.
+uses its reported-success rule.
 
 ### Configuration
 
 `_3` identifies a provider model file, not a corridor-length CLI setting. No
-numeric horizon is supplied by the inspected provider registration; use a proper
-bounded registration and matching replay allocation before full training. The
-upstream README recommends `--in-embed 64` for that compatible training setup.
+numeric horizon is supplied by the inspected provider registration. Set
+`train.py --max-episode-steps N` to install a real outer TimeLimit and bound replay
+allocation; the example uses N=250 solely as an execution-check cap. The upstream
+README recommends `--in-embed 64`.
 
 ### Usage
 
-Optional-provider CPU interface check, not executed locally:
+Conditional on the optional provider and parser; not executed locally:
 
 ```bash
-python -c "import gym, gym_pomdps; e = gym.make('POMDP-heavenhell_3-episodic-v0'); e.seed(1); print(e.reset(), e.observation_space, e.action_space); e.close()"
+python train.py --model DTQN --env POMDP-heavenhell_3-episodic-v0 \
+  --max-episode-steps 250 --in-embed 64 --context 50 --history 50 \
+  --prefill-steps 128 --num-steps 2000 --batch 4 --training-seed 1 \
+  --device cpu --output-dir results/heavenhell-example/train --verbose
 ```
 
 **Rendering:** the provider supplies a matplotlib-backed renderer for
@@ -974,6 +1051,23 @@ python -c "import gym, gym_pomdps; e = gym.make('POMDP-heavenhell_3-episodic-v0'
 [HeavenHell model][heavenhell-model]; [provider API][pomdp-api];
 [provider registration][pomdp-registration]; [renderer selection][pomdp-renderers];
 [Esslinger et al. (2022), Appendix B.1][dtqn2022].
+
+## Documentation validation
+
+The 2026-11-23 refresh checked all **35 choices**, all **14 seven-field family
+templates**, **36 documented command invocations** across this guide, the README
+and both kNN guides, and **74 local links/anchors**. Commands were parsed with
+the actual entrypoint parsers; the example JSON grid dry-run expanded to 15 valid
+train/eval pairs. Optional providers were not instantiated.
+
+Separate CPU CLI runs on Passive T-Maze, Noisy T-Maze, Associative Corridor,
+Car Flag and Memory Cards each completed **16 training interactions, 16 gradient
+updates and two final-policy evaluation episodes**. These checks retained the
+guide's environment/context settings, reduced the batch to two, and requested
+prefill of at least three native horizons so completed replay episodes were
+available. Model saving/loading and the listed CSV, metadata and trajectory files
+were checked, including one recorded action per training interaction. These are
+execution checks, not convergence or performance-preservation results.
 
 ## Acceptance criteria and paper handoff
 
@@ -1008,11 +1102,11 @@ that it was included in the project's final experiment grid.
 [dtqn2022]: https://arxiv.org/pdf/2206.01078
 [memory-rl-code]: https://github.com/twni2016/Memory-RL/blob/main/envs/tmaze.py
 [memory-rl-config]: https://github.com/twni2016/Memory-RL/blob/main/configs/envs/tmaze_passive.py
-[passive-code]: https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/blob/d8a6a9971f76c394c8f5cc7de2ad690b259f1a63/envs/passive_tmaze.py
-[noisy-code]: https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/blob/23b7822d88e5404204b9ebd26a22f09d814f0d85/envs/noisy_tmaze.py
-[noisy-validation]: https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/blob/23b7822d88e5404204b9ebd26a22f09d814f0d85/docs/noisy-tmaze-validation.md
-[assoc-code]: https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/blob/00a0e71475c9a2dfac525e72284e695a83651277/envs/associative_corridor.py
-[assoc-validation]: https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/blob/00a0e71475c9a2dfac525e72284e695a83651277/docs/associative-corridor-validation.md
+[passive-code]: https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/blob/ed83da1d6df52031c305b82a39560f8a8d5d1404/envs/passive_tmaze.py
+[noisy-code]: https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/blob/ed83da1d6df52031c305b82a39560f8a8d5d1404/envs/noisy_tmaze.py
+[noisy-validation]: https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/blob/ed83da1d6df52031c305b82a39560f8a8d5d1404/docs/noisy-tmaze-validation.md
+[assoc-code]: https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/blob/ed83da1d6df52031c305b82a39560f8a8d5d1404/envs/associative_corridor.py
+[assoc-validation]: https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/blob/ed83da1d6df52031c305b82a39560f8a8d5d1404/docs/associative-corridor-validation.md
 [registration]: ../envs/__init__.py
 [factory]: ../utils/env_processing.py
 [car-code]: ../envs/car_flag.py

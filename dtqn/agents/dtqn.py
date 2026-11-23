@@ -1,4 +1,4 @@
-from typing import Callable, Union
+from typing import Callable, Optional, Tuple, Union
 
 import numpy as np
 import torch
@@ -159,6 +159,20 @@ class DtqnAgent(DqnAgent):
         if self.train_mode == TrainMode.TRAIN:
             self.replay_buffer.store(obs, action, reward, done, self.context.timestep)
 
+    def _sample_replay(self) -> Tuple[np.ndarray, ...]:
+        return self.replay_buffer.sample(self.batch_size)
+
+    def _training_forward(
+        self,
+        network: Module,
+        obss: torch.Tensor,
+        actions: torch.Tensor,
+        bag_obss: Optional[torch.Tensor],
+        bag_actions: Optional[torch.Tensor],
+        next_window: bool = False,
+    ) -> torch.Tensor:
+        return network(obss, actions, bag_obss, bag_actions)
+
     def train(self) -> None:
         if not self.replay_buffer.can_sample(self.batch_size):
             return
@@ -191,7 +205,7 @@ class DtqnAgent(DqnAgent):
                 next_actions,
                 dones,
                 episode_lengths,
-            ) = self.replay_buffer.sample(self.batch_size)
+            ) = self._sample_replay()
             bag_obss = None
             bag_actions = None
 
@@ -212,7 +226,9 @@ class DtqnAgent(DqnAgent):
 
         # obss is [batch-size x hist-len x obs-len]
         # then q_values is [batch-size x hist-len x n-actions]
-        q_values = self.policy_network(obss, actions, bag_obss, bag_actions)
+        q_values = self._training_forward(
+            self.policy_network, obss, actions, bag_obss, bag_actions
+        )
 
         # After gathering, Q values becomes [batch-size x hist-len x 1] then
         # after squeeze becomes [batch-size x hist-len]
@@ -224,11 +240,23 @@ class DtqnAgent(DqnAgent):
             # to become [batch-size x hist-len]
             if self.history:
                 argmax = torch.argmax(
-                    self.policy_network(next_obss, next_actions, bag_obss, bag_actions),
+                    self._training_forward(
+                        self.policy_network,
+                        next_obss,
+                        next_actions,
+                        bag_obss,
+                        bag_actions,
+                        next_window=True,
+                    ),
                     dim=2,
                 ).unsqueeze(-1)
-                next_obs_q_values = self.target_network(
-                    next_obss, next_actions, bag_obss, bag_actions
+                next_obs_q_values = self._training_forward(
+                    self.target_network,
+                    next_obss,
+                    next_actions,
+                    bag_obss,
+                    bag_actions,
+                    next_window=True,
                 )
                 next_obs_q_values = next_obs_q_values.gather(2, argmax).squeeze()
 

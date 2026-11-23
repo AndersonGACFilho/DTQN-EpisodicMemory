@@ -1,0 +1,17 @@
+{
+  "model": ["DTQN"],
+  "env": ["PassiveTMaze-v0"],
+  "context": [2],
+  "history": [2],
+  "corridor_length": [3, 5],
+  "in_embed": [16],
+  "heads": [2],
+  "layers": [1],
+  "batch": [2],
+  "buf_size": [200],
+  "num_steps": [16],
+  "prefill_steps": [24],
+  "training_seed": [1, 2],
+  "eval_episodes": [3],
+  "eval_seed": [10000]
+}

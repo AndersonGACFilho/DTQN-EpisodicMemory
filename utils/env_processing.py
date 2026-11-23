@@ -1,4 +1,4 @@
-from typing import Union
+from typing import Mapping, Union
 
 import gym
 import numpy as np
@@ -26,11 +26,25 @@ from enum import Enum
 from envs.gv_wrapper import GridVerseWrapper
 
 
-def make_env(id_or_path: str) -> GymEnvironment:
+def make_env(
+    id_or_path: str,
+    corridor_length: int = 10,
+    *,
+    noise_level: float = 0.5,
+    noise_std: float = 0.1,
+) -> GymEnvironment:
     """Makes a GV gym environment."""
     try:
         print("Loading using gym.make")
-        env = gym.make(id_or_path)
+        kwargs = (
+            {"corridor_length": corridor_length}
+            if id_or_path
+            in {"PassiveTMaze-v0", "NoisyTMaze-v0", "AssociativeCorridor-v0"}
+            else {}
+        )
+        if id_or_path == "NoisyTMaze-v0":
+            kwargs.update(noise_level=noise_level, noise_std=noise_std)
+        env = gym.make(id_or_path, **kwargs)
 
     except gym.error.Error:
         print(f"Environment with id {id_or_path} not found.")
@@ -53,6 +67,17 @@ def make_env(id_or_path: str) -> GymEnvironment:
         env = TimeLimit(GridVerseWrapper(env), max_episode_steps=250)
 
     return env
+
+
+def get_episode_success(
+    info: Mapping[str, object],
+    episode_return: float,
+    require_explicit_success: bool = False,
+) -> bool:
+    """Use explicit success for opt-in tasks; preserve legacy return-based success."""
+    if require_explicit_success:
+        return bool(info.get("is_success", False))
+    return bool(info.get("is_success", False) or episode_return > 0)
 
 
 class ObsType(Enum):

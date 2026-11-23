@@ -2,11 +2,20 @@
 
 Design decision for [#3](https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/issues/3) (epic [#37](https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/issues/37)). It fixes how the memory gets the (key, value) pairs of the steps before the training window, at acting time and at training time. The module itself is [#5](https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/issues/5) and its integration into DTQN is [#7](https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/issues/7).
 
+The integration and its local validation are documented in
+[DTQN-kNN](knn-integration.md). The replay length dtype is now `int32`.
+
+Option A remains the behavior of `DTQN-kNN`. A separate
+[DTQN-kNN-cached](knn-cached.md) variant now implements option B, with distinct
+collection-time online and target banks and no refresh after weight updates.
+It is an experiment in the staleness/compute tradeoff, not a replacement for
+the original decision below.
+
 ## Summary
 
 | Question | Decision |
 |---|---|
-| What the memory holds | Every step of the current episode before the start of the local window |
+| What the memory holds | The last M steps of the current episode before the start of the local window |
 | How it is filled at training time | Keys and values of the prefix are **recomputed with the current network under `no_grad`** at every training step (option A) |
 | How it is filled at acting time | A step enters the memory when it is evicted from the context window, with the key and value computed when it was the newest token |
 | Where keys come from | Key/value projections of the attention in transformer layer `l` (default: last layer; ablated in [#22](https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/issues/22)) |
@@ -20,19 +29,19 @@ DTQN trains on length-K windows sampled from the replay buffer (`ReplayBuffer.sa
 Two facts about the current buffer shape the options:
 
 - It already stores **whole episodes**, one per row (`obss[max_size, max_episode_steps + 1, ...]`, `actions`, `rewards`, `dones`), so the steps before the window are available without changing what is stored.
-- `episode_lengths` is `uint8`, so any episode longer than 255 steps overflows. A Passive T-Maze with a long corridor reaches this, whatever option is chosen.
+- At design time, `episode_lengths` was `uint8`, so episodes longer than 255 steps overflowed. This has been changed to `int32`.
 
 Memorizing Transformers (Wu et al., 2022) stores non-differentiable keys and values per document and clears the memory between documents. Here **the episode plays the role of the document**: the memory is reset at every episode boundary, and a sampled window reads only steps of its own episode.
 
 ## What the memory holds
 
-For a window that starts at step `s`, the memory holds steps `[0, s)` of the same episode (the last `M` of them, `M` = memory size), and the window holds `[s, s + K)`. Local attention and memory therefore cover the whole past with no overlap and no gap. Every position of the window reads the same memory: position `i` sees `[0, s)` through the memory and `[s, s + i]` through causal local attention.
+For a window that starts at step `s`, the memory holds the last `M` steps of `[0, s)` of the same episode, and the window holds `[s, s + K)`. The retained past is contiguous with no overlap or gap; earlier steps beyond capacity are unavailable. Every position of the window reads the same external prefix: position `i` sees `[max(0, s-M), s)` through memory and `[s, s+i]` through causal local attention.
 
-The same rule holds when acting: the context keeps the last K steps, and a step enters the memory when `Context.add_transition` ([`utils/context.py`](../utils/context.py)) evicts it. This is the same hook the persistent-memory bag already uses in `DtqnAgent.observe`. Episodes no longer than K never fill the memory, in training or in acting.
+The same rule holds when acting: the context keeps the last K steps, and a step enters the memory when `Context.add_transition` ([`utils/context.py`](../utils/context.py)) evicts it. This is the same hook the persistent-memory bag already uses in `DtqnAgent.observe`. Action selection reads an empty external store until an earlier token leaves the context. During replay, the shifted bootstrap window can have a prefix even when the unshifted window starts at zero, as described below.
 
 ## Where the keys come from
 
-The key and value of step `t` are the key/value projections of the attention in layer `l`, computed in the window that ends at `t` (that is, when `t` was the newest token). At acting time this costs nothing extra: `get_action` already runs that forward pass under `no_grad`, so the agent keeps the newest token's key and value in a FIFO of length K and moves them into the memory on eviction. At training time the same quantity is recomputed for the prefix (below), so the keys the agent learns to read are computed the same way as the ones it reads when acting.
+The key and value of step `t` are the key/value projections of the attention in layer `l`, computed in the window that ends at `t` (that is, when `t` was the newest token). On greedy acting steps, `get_action` already runs that forward pass under `no_grad`; the new agent also runs it on random exploration/prefill steps to avoid missing entries. It keeps the newest token's key and value in a FIFO of length K and moves them into memory on eviction. At training time the same quantity is recomputed for the prefix (below), so acting and replay use the same window and projection conventions.
 
 Only layers `1 … l` are needed to produce the keys, so the recomputation stops at layer `l`.
 
@@ -91,4 +100,4 @@ Write the key and value computed while acting into the buffer, next to each obse
 
 Draft paragraph for the method section ([#8](https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/issues/8)):
 
-> DTQN is trained on windows of K consecutive steps sampled from a replay buffer that stores whole episodes. As in Memorizing Transformers, where the memory holds the keys and values of earlier segments of the same document, our memory holds the keys and values of earlier steps of the same episode and is cleared at every episode boundary. For a window starting at step s, the memory contains the last M steps of the interval [0, s), so that the memory and the causal local attention together cover the whole history without overlap. The key and value of step t are the key and value projections of layer l computed in the window that ends at t. When acting, they are produced by the forward pass that selects the action and enter the memory when step t leaves the context window. During training, they are recomputed for the prefix of each sampled window with the current parameters and without gradient, so that keys are never stale with respect to the queries; the target network recomputes its own keys for the shifted window. By default, gradients do not flow into the memory (stop-gradient); a differentiable variant is evaluated as an ablation.
+> DTQN is trained on windows of K consecutive steps sampled from a replay buffer that stores whole episodes. As in Memorizing Transformers, where the memory holds the keys and values of earlier segments of the same document, our memory holds the keys and values of earlier steps of the same episode and is cleared at every episode boundary. For a window starting at step s, the memory contains the last M steps of the interval [0, s), so that memory and causal local attention cover the retained past without overlap. The key and value of step t are the key and value projections of layer l computed in the window that ends at t. When acting, they are produced by that timestep's forward pass and enter the memory when step t leaves the context window. During training, they are recomputed for the prefix of each sampled window with the current parameters and without gradient, so that keys are never stale with respect to the queries; the target network recomputes its own keys for the shifted window. By default, gradients do not flow into the memory (stop-gradient); a differentiable variant is available as an ablation.

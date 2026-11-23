@@ -35,6 +35,27 @@ register(
 )
 
 
+##################
+# PASSIVE T-MAZE #
+##################
+
+# The environment sets its own horizon to corridor_length + 1.
+register(
+    id="PassiveTMaze-v0",
+    entry_point="envs.passive_tmaze:PassiveTMaze",
+)
+
+register(
+    id="NoisyTMaze-v0",
+    entry_point="envs.noisy_tmaze:NoisyTMaze",
+)
+
+register(
+    id="AssociativeCorridor-v0",
+    entry_point="envs.associative_corridor:AssociativeCorridor",
+)
+
+
 ############
 # CAR FLAG #
 ############

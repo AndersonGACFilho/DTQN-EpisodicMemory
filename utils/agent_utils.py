@@ -1,4 +1,4 @@
-from typing import Tuple
+from typing import Optional, Tuple
 
 import gym
 import numpy as np
@@ -7,16 +7,22 @@ import torch
 from dtqn.agents.dqn import DqnAgent
 from dtqn.agents.drqn import DrqnAgent
 from dtqn.agents.dtqn import DtqnAgent
+from dtqn.agents.dtqn_knn import KnnDtqnAgent
+from dtqn.agents.dtqn_knn_cached import CachedKnnDtqnAgent
 from dtqn.networks.adrqn import ADRQN
 from dtqn.networks.darqn import DARQN
 from dtqn.networks.dqn import DQN
 from dtqn.networks.drqn import DRQN
 from dtqn.networks.dtqn import DTQN
+from dtqn.networks.dtqn_knn import DTQNKNN
+from dtqn.networks.knn_memory import MemoryConfig
 from utils import env_processing
 
 MODEL_MAP = {
     "DTQN": DTQN,
     "DTQN-bag": DTQN,
+    "DTQN-kNN": DTQNKNN,
+    "DTQN-kNN-cached": DTQNKNN,
     "ADRQN": ADRQN,
     "DRQN": DRQN,
     "DARQN": DARQN,
@@ -26,6 +32,8 @@ MODEL_MAP = {
 AGENT_MAP = {
     "DTQN": DtqnAgent,
     "DTQN-bag": DtqnAgent,
+    "DTQN-kNN": KnnDtqnAgent,
+    "DTQN-kNN-cached": CachedKnnDtqnAgent,
     "ADRQN": DrqnAgent,
     "DRQN": DrqnAgent,
     "DARQN": DrqnAgent,
@@ -55,6 +63,8 @@ def get_agent(
     gate: str = "res",
     pos: str = "learned",
     bag_size: int = 0,
+    memory_enabled: bool = True,
+    memory_config: Optional[MemoryConfig] = None,
 ):
     """Function to create the agent. This will also set up the policy and target networks that the agent needs.
     Arguments:
@@ -109,6 +119,12 @@ def get_agent(
     if model_str == "DQN":
         context_len = 1
 
+    memory_model = model_str in {"DTQN-kNN", "DTQN-kNN-cached"}
+    using_memory = memory_model and memory_enabled
+    memory_options = (
+        {"memory_config": memory_config or MemoryConfig()} if using_memory else {}
+    )
+
     def make_model(network_cls):
         """Creates the non-transformer models: DQN, DRQN, ADRQN, ..."""
         return lambda: network_cls(
@@ -141,14 +157,19 @@ def get_agent(
             vocab_sizes=obs_vocab_size,
             target_update_frequency=target_update_frequency,
             bag_size=bag_size,
+            **memory_options,
         ).to(device)
 
     if "DTQN" not in model_str:
         network_factory = make_model(MODEL_MAP[model_str])
     else:
-        network_factory = make_dtqn(MODEL_MAP[model_str])
+        network_cls = (
+            DTQN if memory_model and not using_memory else MODEL_MAP[model_str]
+        )
+        network_factory = make_dtqn(network_cls)
 
-    return AGENT_MAP[model_str](
+    agent_cls = DtqnAgent if memory_model and not using_memory else AGENT_MAP[model_str]
+    return agent_cls(
         network_factory,
         buffer_size,
         device,
@@ -165,4 +186,5 @@ def get_agent(
         history=history,
         target_update_frequency=target_update_frequency,
         bag_size=bag_size,
+        **memory_options,
     )
