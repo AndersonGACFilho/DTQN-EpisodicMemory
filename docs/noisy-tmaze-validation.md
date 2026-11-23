@@ -6,7 +6,7 @@ Validated locally on 2026-11-22, based on Passive T-Maze commit `d8a6a99`.
 
 | Criterion | Evidence | Local result |
 |---|---|---|
-| AC1: select/configure the variant | `NoisyTMaze-v0` registration, factory forwarding tests, and an actual `run.py` CPU training run with `--noise-level 0.5 --noise-std 0.1` | Passed |
+| AC1: select/configure the variant | `NoisyTMaze-v0` registration, factory forwarding tests, and an actual `run_legacy.py` CPU training run with `--noise-level 0.5 --noise-std 0.1` | Passed |
 | AC2: zero noise matches Passive T-Maze | Equal spaces and seeded observations/rewards/termination/success across 30 episodes each at lengths 1, 10 and 300, including correct routes, wrong branches and random movements | Passed |
 | AC3: oracle succeeds at every supported noise level | 1,000 observation-driven oracle episodes per combination of probability `{0, 0.25, 0.5, 1}` and standard deviation `{0.1, 1}`: **8,000/8,000 successes**; additional length 1/300 checks | Passed |
 
@@ -30,7 +30,7 @@ of every real-valued probability/standard deviation.
 This command completed for `NoisyTMaze-v0`, `DiscreteCarFlag-v0` and `Memory-5-v0`:
 
 ```bash
-OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 python run.py --model DTQN --envs ENV_ID \
+OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 python run_legacy.py --model DTQN --envs ENV_ID \
   --corridor-length 12 --noise-level 0.5 --noise-std 0.1 \
   --context 8 --history 8 --device cpu --num-steps 64 \
   --eval-frequency 32 --eval-episodes 2 --batch 8 --buf-size 2000 --seed 1 \

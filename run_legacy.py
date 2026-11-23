@@ -50,7 +50,7 @@ def get_args():
         "--corridor-length",
         type=int,
         default=10,
-        help="Corridor length for PassiveTMaze-v0 and NoisyTMaze-v0 (positive integer, default: 10).",
+        help="Corridor length for Passive/Noisy T-Maze (>=1) or Associative Corridor (>=8); default: 10.",
     )
     parser.add_argument(
         "--noise-level",
@@ -247,7 +247,11 @@ def evaluate(
                 sleep(0.5)
         total_reward += ep_reward
         total_steps += agent.context.timestep
-        if info.get("is_success", False) or ep_reward > 0:
+        if env_processing.get_episode_success(
+            info,
+            ep_reward,
+            getattr(eval_env.unwrapped, "requires_explicit_success", False),
+        ):
             num_successes += 1
 
     # Set networks back to train mode
@@ -490,7 +494,9 @@ def run_experiment(args):
         f"model={args.model}_envs={','.join(args.envs)}_obs_embed={args.obs_embed}_a_embed={args.a_embed}_in_embed={args.in_embed}_context={args.context}_heads={args.heads}_layers={args.layers}_"
         f"batch={args.batch}_gate={args.gate}_identity={args.identity}_history={args.history}_pos={args.pos}_bag={args.bag_size}_seed={args.seed}",
     )
-    if {"PassiveTMaze-v0", "NoisyTMaze-v0"}.intersection(args.envs):
+    if {"PassiveTMaze-v0", "NoisyTMaze-v0", "AssociativeCorridor-v0"}.intersection(
+        args.envs
+    ):
         policy_path += f"_corridor={args.corridor_length}"
     if "NoisyTMaze-v0" in args.envs:
         policy_path += f"_noise={args.noise_level:g}_std={args.noise_std:g}"

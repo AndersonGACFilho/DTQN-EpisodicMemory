@@ -99,12 +99,12 @@ Passive T-Maze is available as `PassiveTMaze-v0`. With the project environment
 activated, run this from the repository root:
 
 ```bash
-python run.py --model DTQN --envs PassiveTMaze-v0 --corridor-length 10 \
+python run_legacy.py --model DTQN --envs PassiveTMaze-v0 --corridor-length 10 \
   --context 50 --device cpu --num-steps 2000 --eval-frequency 500 \
   --eval-episodes 10 --seed 1 --project-name tmaze-smoke --disable-wandb --verbose
 ```
 
-`--corridor-length` defaults to 10 and also configures Noisy T-Maze below. The episode
+`--corridor-length` defaults to 10 and also configures Noisy T-Maze and Associative Corridor. The episode
 lasts `corridor_length + 1` steps; increase the length beyond `--context` to test
 dependencies outside the observation window. This runs ordinary DTQN; kNN memory
 integration is tracked in #7. No additional runtime packages are required beyond
@@ -157,7 +157,7 @@ walks right and chooses the indicated branch; its solution is valid at every
 supported noise level and standard deviation. Rewards are never modified.
 
 ```bash
-python run.py --model DTQN --envs NoisyTMaze-v0 --corridor-length 15 \
+python run_legacy.py --model DTQN --envs NoisyTMaze-v0 --corridor-length 15 \
   --noise-level 0.5 --noise-std 0.1 --context 14 --history 14 --device cpu \
   --num-steps 2000 --eval-frequency 500 --eval-episodes 10 --seed 1 \
   --project-name noisy-tmaze-smoke --disable-wandb --verbose
@@ -183,6 +183,55 @@ Tests cover #20's configurable selection (AC1), exact zero-noise equivalence
 at noise levels 0, 0.25, 0.5 and 1 with standard deviations 0.1 and 1 (AC3).
 Reviewed PR/merge into `main` is a separate completion requirement; local checks
 do not satisfy that requirement by themselves.
+
+## Running Associative Corridor
+
+`AssociativeCorridor-v0` is an additional recall task with four independent
+class/direction associations. Each episode contains one instruction and one use
+of each class. Instructions and queries can be interleaved, but an instruction
+always precedes its own query. Directions and event positions change on reset.
+The final position is always a query; unoccupied positions are blank corridor.
+
+Observations are six `float32` values: `[A, B, C, D, is_query, direction]`.
+The first four values are a one-hot class code, or all zeros in blank corridor.
+
+| Situation | Example |
+|---|---|
+| Instruction: B means Down | `[0, 1, 0, 0, 0, -1]` |
+| Blank corridor | `[0, 0, 0, 0, 0, 0]` |
+| Query: which direction for B? | `[0, 1, 0, 0, 1, 0]` |
+
+Direction is `-1`/`+1` only on instructions. Queries do not reveal the answer.
+Use Right (0) at instructions and blanks, and Up (1) or Down (3) at queries.
+A correct query gives +1 and advances; correct corridor actions give 0 and
+advance. Any incorrect action, including Left (2), ends the episode with reward
+0. A successful episode answers all four queries and returns 4. Earlier correct
+answers still contribute to return when a later action fails, but that episode
+is counted as a failure. Only this environment opts into that explicit success
+rule; existing environments retain their evaluation behavior.
+
+`--corridor-length` is the number of decision positions: minimum 8, default 10.
+A successful episode takes exactly that many steps (unlike Passive T-Maze's
+`L + 1`). Random positions allow different recall delays; a longer corridor does
+not guarantee that every instruction/query pair exceeds the context window.
+The `instructions` and `queries` dictionaries on `env.unwrapped` expose event
+positions for inspecting a seeded schedule; the agent receives observations only.
+
+```bash
+python run_legacy.py --model DTQN --envs AssociativeCorridor-v0 --corridor-length 100 \
+  --context 14 --history 14 --device cpu --num-steps 2000 \
+  --eval-frequency 500 --eval-episodes 10 --seed 1 \
+  --project-name associative-smoke --disable-wandb --verbose
+
+python -m unittest tests.test_associative_corridor -v
+```
+
+Run this separately from environments with two-dimensional observations.
+Output files under `policies/<project-name>/AssociativeCorridor-v0/` include
+`_corridor=<L>`. Use a fresh project name for a fresh smoke run. No new packages
+or graphical renderer are included. This runs ordinary DTQN; kNN integration
+remains #7. The task tests class-dependent recall, not the necessity of kNN over
+every other memory architecture.
 
 ## Project management
 
@@ -305,13 +354,85 @@ pip install .
 
 Tada! Now, you should be ready to run experiments.
 
-## Running Experiments
+## Training, final evaluation, and parameter sweeps (#9)
 
-Our experiment script is `run.py`.
+The new workflow separates training from final evaluation and records every
+training, prefill and evaluation action for later inspection:
+
+```bash
+# Inspect the requested pairs before running them (currently four).
+python train_and_eval.py --config experiments/tmaze.json --dry-run
+python train_and_eval.py --config experiments/tmaze.json
+
+# Quick four-job pipeline check.
+python train_and_eval.py --config experiments/smoke.json
+```
+
+Only `train_and_eval.py` reads the JSON. Each list forms part of a full Cartesian
+product. It invokes `train.py` once per configuration/seed, then `eval.py` on that
+run's saved final model with the same environment settings. Results are compared
+only after all jobs finish. Defaults are CPU, local logging, and output under
+`results/<config-filename>/<batch>/`; use `--device cuda` for a CUDA installation.
+A fresh invocation creates a new batch. `--resume BATCH` reuses successful stages;
+`--aggregate-only BATCH` regenerates tables without executing experiments.
+
+Each seed gets `result.csv`, final `model.pt`, episode/loss CSVs, resource metadata
+and compressed step-by-step trajectories. `runs.csv` and `summary.csv` collect
+success/return/length, wall-clock seconds and peak allocated GPU bytes, with
+across-seed mean, sample std and Student-t 95% confidence intervals. Missing seeds
+are flagged; incomplete groups do not receive comparison statistics.
+
+Train/evaluate one configuration without a sweep:
+
+```bash
+python train.py --model DTQN --env PassiveTMaze-v0 --context 14 \
+  --corridor-length 15 --num-steps 32000 --training-seed 1 \
+  --output-dir results/manual-train
+python eval.py --model-path results/manual-train/model.pt \
+  --eval-episodes 100 --eval-seed 10000 --output-dir results/manual-eval
+```
+
+See [the harness guide](docs/experiment-harness.md) for every flag/default/effect,
+JSON rules, trajectory schemas, statistics, resource accounting and resume.
+SciPy (`scipy==1.8.1`, already in `requirements.txt`) supplies the t distribution.
+The supplied `tmaze.json` uses one training seed, so its std/CI fields are blank.
+List multiple `training_seed` values to compare independent training runs.
+
+| New workflow flag | Default | Effect |
+|---|---|---|
+| `--config` (outer) | Required for a new batch | Read the flat JSON parameter grid |
+| `--output-root` (outer) | `results` | Parent folder for batch output |
+| `--project-name` (outer) | Config filename stem | Output subdirectory |
+| `--device` (all) | `cpu` | Select CPU or CUDA explicitly |
+| `--verbose` (all) | Off | Print stage details; outer saves them in process logs |
+| `--dry-run` (outer) | Off | List combinations/errors without running them |
+| `--resume` (outer) | None | Reuse completed stages and retry failures |
+| `--aggregate-only` (outer) | None | Rebuild comparisons from saved results |
+| `--env` (train) | `DiscreteCarFlag-v0` | Select one training environment |
+| `--output-dir` (train/eval) | Required | Write to a new/empty stage folder |
+| `--model-path` (eval) | Required | Load a final trained model bundle |
+| `--training-seed` (train) | `1` | Seed initialization, exploration, replay and the training environment |
+| `--prefill-steps` (train) | `50000` | Minimum random prefill interactions; finish the last episode |
+| `--eval-episodes` (eval) | `100` | Fixed number of greedy evaluation episodes |
+| `--eval-seed` (eval) | `10000` | Seed evaluation independently from training |
+
+Scientific JSON keys use underscores, e.g. `training_seed` and `eval_episodes`.
+The outer script accepts scientific settings only from JSON; `train.py` receives
+one concrete configuration through CLI flags. All inherited hyperparameter
+defaults and model-specific effects are listed in the harness guide.
+
+The former `run.py` is preserved as `run_legacy.py` for the original combined
+training/periodic-evaluation workflow described below. It keeps its old flags,
+W&B support and checkpoint semantics. New scripts always save the final policy
+and do not need `--save-policy`, `--disable-wandb`, or `--eval-frequency`.
+
+## Legacy combined runner
+
+Our experiment script is `run_legacy.py`.
 The arguments are explained at the bottom of the file.
 Using the command
 ```shell
-python run.py
+python run_legacy.py
 ```
 
 You will run the default settings, which will run DTQN on the Car Flag domain as tested in the paper.
@@ -337,7 +458,7 @@ For all others tasks, we use `--in-embed 128`.
 For instance, to reproduce our Gridverse memory 7x7 experiment, you can use the command:
 
 ```shell
-python run.py --envs gv_memory.7x7.yaml --in-embed 128
+python run_legacy.py --envs gv_memory.7x7.yaml --in-embed 128
 ```
 
 Which will run for 2,000,000 timesteps.
