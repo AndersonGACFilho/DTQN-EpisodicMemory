@@ -17,11 +17,11 @@ select = [
 "envs/__init__.py" = ["F401"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["dtqn", "envs", "utils"]
+known-first-party = ["analysis", "dtqn", "envs", "evaluation", "utils"]
 
 [tool.mypy]
 python_version = "3.10"
-files = ["dtqn", "envs", "utils", "tests", "scripts", "run_legacy.py", "train.py", "eval.py", "train_and_eval.py"]
+files = ["analysis", "dtqn", "envs", "evaluation", "utils", "tests", "scripts", "run_legacy.py", "run_rliable_grid.py", "train.py", "eval.py", "train_and_eval.py"]
 strict = true
 warn_unreachable = true
 # torch 1.11 leaves parts of its API unannotated (for example torch.no_grad)
@@ -34,10 +34,13 @@ module = [
     "gym_gridverse.*",
     "gym_pomdps.*",
     "joblib.*",
+    "matplotlib.*",
     "minihack.*",
     "nle.*",
     "pyglet.*",
+    "rliable.*",
     "scipy.*",
+    "seaborn.*",
     "wandb.*",
 ]
 ignore_missing_imports = true

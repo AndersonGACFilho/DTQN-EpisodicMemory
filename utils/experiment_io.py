@@ -40,7 +40,7 @@ def code_identity() -> Dict[str, str]:
         commit = "unknown"
     paths = [
         p
-        for folder in ("dtqn", "envs", "utils")
+        for folder in ("dtqn", "envs", "evaluation", "utils")
         for p in (ROOT / folder).rglob("*")
         if p.is_file() and p.suffix in {".py", ".yaml", ".yml"}
     ]
@@ -51,6 +51,7 @@ def code_identity() -> Dict[str, str]:
             "eval.py",
             "train_and_eval.py",
             "run_legacy.py",
+            "run_rliable_grid.py",
             "pyproject.toml",
             "requirements.txt",
         )

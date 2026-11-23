@@ -1,0 +1,16 @@
+{
+  "parameters": {
+    "model": ["DTQN", "DTQN-kNN"],
+    "env": ["PassiveTMaze-v0"],
+    "context": [6, 12, 18],
+    "layers": [2, 3],
+    "corridor_length": [10],
+    "num_steps": [32000],
+    "prefill_steps": [50000],
+    "bag_size": [0]
+  },
+  "train_seeds": 5,
+  "eval_episodes": 100,
+  "eval_interval": 2000,
+  "comparisons": [["DTQN-kNN", "DTQN"]]
+}

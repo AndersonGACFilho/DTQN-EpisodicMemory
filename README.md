@@ -315,6 +315,97 @@ renderer are included. This runs ordinary DTQN; select `DTQN-kNN` or
 `DTQN-kNN-cached` for the integrated memory variants. The task tests
 class-dependent recall, not the necessity of kNN over every other memory architecture.
 
+## Multi-seed evaluation with rliable
+
+Comparisons follow [rliable](https://github.com/google-research/rliable)
+(Agarwal et al., NeurIPS 2021): several training seeds, aggregate metrics with
+bootstrap confidence intervals, performance profiles, probability of improvement
+and learning curves with uncertainty bands.
+
+### Run the grid
+
+[`experiments/rliable_tmaze.json`](experiments/rliable_tmaze.json) is the single
+source of truth for the grid: `parameters` lists `RunConfig` values (full
+Cartesian product), `train_seeds` the number of seeds (1..N), `eval_episodes`,
+`eval_interval` (training steps between evaluations) and `comparisons`
+(`[candidate, baseline]` models). Check that its hyperparameters match the runs you
+want to reproduce before launching it.
+
+```bash
+# List the 60 jobs (2 models x 3 contexts x 2 layers x 5 seeds) and their status
+python run_rliable_grid.py --grid experiments/rliable_tmaze.json --dry-run
+
+# Run everything; repeat the same command to resume after an interruption
+python run_rliable_grid.py --grid experiments/rliable_tmaze.json --device cuda
+
+# Split the work between machines, e.g. one model or one seed each
+python run_rliable_grid.py --grid experiments/rliable_tmaze.json --only model=DTQN-kNN
+python run_rliable_grid.py --grid experiments/rliable_tmaze.json --only training_seed=3
+
+# Use 10 seeds instead of the grid's 5
+python run_rliable_grid.py --grid experiments/rliable_tmaze.json --seeds 10
+```
+
+Each run trains with the existing `train.py` code path and evaluates the greedy
+policy every `eval_interval` steps and at the final step, always on the same
+`eval_episodes` episodes. The evaluation seed is `10000 + training_seed`, so runs
+do not share evaluation episodes. Evaluation saves and restores every random
+stream: the trained weights are identical to a run without evaluation. A run is
+complete when both files exist and is then skipped:
+
+- `results/raw/<run_id>.csv`: one row per evaluation episode with `model, env,
+  context, layers, corridor_length, train_seed, eval_seed, step, episode, success,
+  episode_return, episode_length, goal_side, chosen_side`. Sides are `up`, `down`,
+  or `none` (junction not reached), and empty for environments without a junction.
+- `results/raw/<run_id>.json`: the full configuration, evaluation steps, git commit
+  and source hash, library versions, wall-clock time and the artifact folder.
+
+Training artifacts (final `model.pt`, CSV logs, trajectories) go to
+`results/runs/<run_id>/attempt-NNN/`; an interrupted attempt is kept and a new one
+starts. Add a junction reader to `SIDE_READERS` in
+[`evaluation/sides.py`](evaluation/sides.py) for a new environment, and a model
+name to the grid for a new model.
+
+### Generate the report
+
+```bash
+python -m analysis.rliable_report --grid experiments/rliable_tmaze.json
+# Final numbers: more bootstrap replications (slower)
+python -m analysis.rliable_report --grid experiments/rliable_tmaze.json --reps 50000
+```
+
+The report reads only the grid's runs and stops with the run ids of any run that
+has no results. It writes PNG and PDF figures to `results/figures/`
+(`aggregate_metrics`, `probability_of_improvement`, `performance_profiles`,
+`iqm_learning_curves`) and CSV/Markdown tables to `results/summary/`
+(`summary.md`, `aggregate_metrics.csv`, `probability_of_improvement.csv`,
+`side_bias.csv`). Scores are final success rates, already in [0, 1]. An algorithm
+is a (model, context, layers) combination and a task an (environment, corridor
+length) combination; score matrices have shape `(n_seeds, n_tasks)`.
+
+### Interpret the results
+
+- **IQM** (interquartile mean): the mean of the middle 50% of all run x task
+  scores. It ignores the best and worst 25%, so it is less sensitive to outlier
+  seeds than the mean and less noisy than the median. Prefer it as the headline.
+- **95% CI**: stratified bootstrap over training seeds within each task. With few
+  seeds the intervals are wide; overlapping intervals mean the data do not
+  separate the algorithms, not that they are equal. Report the interval, not only
+  the point estimate.
+- **Optimality gap**: the mean shortfall below a perfect success rate of 1
+  (lower is better).
+- **Probability of improvement** P(X > Y): the chance that a random run of X
+  beats a random run of Y on the same task (ties count one half). 0.5 means no
+  difference. A CI entirely above 0.5 supports an improvement; the
+  [rliable paper](https://arxiv.org/abs/2108.13264) treats a lower bound above 0.5
+  together with an upper bound above 0.75 as statistically meaningful.
+- **Performance profile**: the fraction of runs with a success rate above each
+  threshold tau. A curve that stays higher dominates.
+- **Side bias**: `side_bias.csv` marks runs whose final evaluation ends in the
+  same branch in more than 90% of episodes. Such a policy ignores the cue; its
+  success rate equals the share of goals on that side (for example, 31 of the 50
+  episodes from seed 10000 have the goal down, so always turning down scores 62%).
+
 ## Project management
 
 Work is tracked in the [GitHub Project](https://github.com/users/AndersonGACFilho/projects/19) (Kanban, Roadmap, Goals, Epics, Priorities and one board per person).

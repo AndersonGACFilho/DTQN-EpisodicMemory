@@ -2,7 +2,7 @@
 
 import csv
 from pathlib import Path
-from typing import Any, Dict, List, Tuple
+from typing import Any, Callable, Dict, List, Optional, Tuple
 
 import gym
 import torch
@@ -36,6 +36,8 @@ EPISODE_COLUMNS = [
     "truncated",
     "completion_reason",
 ]
+# Called as hook(agent, training_step) after every training interaction
+StepHook = Callable[[Any, int], None]
 LOSS_ATTRIBUTES = [
     "td_errors",
     "grad_norms",
@@ -161,6 +163,7 @@ def collect_training(
     trajectories: TrajectoryWriter,
     episodes: RecordCSV,
     losses: RecordCSV,
+    step_hook: Optional[StepHook] = None,
 ) -> Dict[str, int]:
     counts = {"prefill_steps": 0, "training_steps": 0, "training_episodes": 0}
     eps = LinearAnneal(1.0, 0.1, max(1, config.num_steps // 10))
@@ -235,6 +238,8 @@ def collect_training(
                                 },
                             }
                         )
+                    if step_hook is not None:
+                        step_hook(agent, steps)
             complete = bool(done)
             row = {
                 "phase": phase,
@@ -265,7 +270,11 @@ def collect_training(
 
 
 def train_run(
-    config: RunConfig, output: Path, device: str = "cpu", verbose: bool = False
+    config: RunConfig,
+    output: Path,
+    device: str = "cpu",
+    verbose: bool = False,
+    step_hook: Optional[StepHook] = None,
 ) -> Dict[str, Any]:
     config.validate()
     output.mkdir(parents=True, exist_ok=True)
@@ -299,7 +308,9 @@ def train_run(
                 *LOSS_ATTRIBUTES,
             ],
         ) as losses:
-            counts = collect_training(agent, env, config, trace, episodes, losses)
+            counts = collect_training(
+                agent, env, config, trace, episodes, losses, step_hook
+            )
         # Always save the FINAL policy, including non-parameter state_dict buffers.
         torch.save(
             {
