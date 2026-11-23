@@ -523,12 +523,24 @@ Otherwise, you need to install the `gym-gridverse` repo to run the gridverse exp
 
 To install gym-gridverse, you need to clone the `gym-gridverse` [github repo](https://github.com/abaisero/gym-gridverse.git).
 Finally, once you have the source code, pip install it into the virtual enviroment.
-This can be done as follows:
+Install its dependencies first, then the package itself with `--no-deps`:
 
 ```bash
 git clone git@github.com:abaisero/gym-gridverse.git
-cd gym-gridverse
-pip install .
+pip install imageio imageio-ffmpeg more_itertools schema
+pip install --no-deps ./gym-gridverse
+```
+
+A plain `pip install .` fails on recent compilers. `gym==0.18` declares
+`Pillow<=7.2.0`, so pip downgrades Pillow and builds 7.2.0 from source, which
+modern GCC rejects (C23 `bool`, incompatible pointer types). `--no-deps` keeps
+the Pillow already in the environment. The clone is not needed after
+installation.
+
+Check the installation with:
+
+```bash
+python -c "from utils.env_processing import make_env; make_env('gv_memory.5x5.yaml').reset()"
 ```
 
 ### Installing rl-parsers
@@ -538,19 +550,56 @@ First, install `rl-parsers` by cloning the [github repo](https://github.com/abai
 
 ```bash
 git clone git@github.com:abaisero/rl-parsers.git
-cd rl-parsers
-pip install -e .
+pip install ./rl-parsers
 ```
 
 ### Installing gym-pomdps
 
 Next, install `gym-pomdps` by cloning the [github repo](https://github.com/abaisero/gym-pomdps.git) and installing it into your python virtual environment.
+Use `--no-deps`:
 
 ```bash
 git clone git@github.com:abaisero/gym-pomdps.git
-cd gym-pomdps
-pip install .
+pip install --no-deps ./gym-pomdps
 ```
+
+`gym-pomdps` lists `one_to_one`, which is not on PyPI, so a plain `pip install .`
+fails. Only its `generators/` scripts use that package; the environments need
+`gym`, `matplotlib`, `numpy`, `typing_extensions` and `rl_parsers`, which are
+already installed by the steps above.
+
+Check the installation with:
+
+```bash
+python -c "from utils.env_processing import make_env; make_env('POMDP-hallway-episodic-v0').reset()"
+```
+
+The clones are not needed after installation. `gym-gridverse/`, `rl-parsers/` and
+`gym-pomdps/` are git-ignored if you clone them into the repository root.
+
+### MiniHack and NLE
+
+`minihack==0.1.3` and `nle==0.8.1` in `requirements.txt` are needed only for the
+`MH-` domains, not for the T-Maze or Associative Corridor experiments. `nle` 0.8.1
+has no prebuilt wheel, so pip compiles NetHack from source, and this fails with
+recent toolchains (tested with CMake 4.5, GCC 16 and glibc 2.44):
+
+- CMake 4 rejects its `cmake_minimum_required` below 3.5; setting
+  `CMAKE_POLICY_VERSION_MINIMUM=3.5` gets past this.
+- GCC 15+ defaults to C23, where NetHack's old prototypes conflict with glibc;
+  `CFLAGS=-std=gnu17` gets past this.
+- NetHack's `include/tradstdc.h` defines `__warn_unused_result__` as empty, which
+  breaks recent glibc headers. This needs a source patch or an older toolchain (for example, a
+  container with an older distribution).
+
+If you do not need the `MH-` domains, install the other requirements without them:
+
+```bash
+grep -vE '^(minihack|nle)==' requirements.txt | pip install -r /dev/stdin
+```
+
+Without them, startup prints a warning that the `MH-` domains are unavailable;
+every other environment works.
 
 Tada! Now, you should be ready to run experiments.
 
