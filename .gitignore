@@ -6,3 +6,14 @@ results/
 wandb/
 policies/
 plots/
+
+# LaTeX build output
+paper/*.aux
+paper/*.log
+paper/*.out
+paper/*.bbl
+paper/*.blg
+paper/*.synctex.gz
+paper/*.fls
+paper/*.fdb_latexmk
+paper/*.toc
