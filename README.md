@@ -339,8 +339,9 @@ want to reproduce before launching it.
 # List the 60 jobs (2 models x 3 contexts x 2 layers x 5 seeds) and their status
 python run_rliable_grid.py --grid experiments/rliable_tmaze.json --dry-run
 
-# Run everything; repeat the same command to resume after an interruption
-python run_rliable_grid.py --grid experiments/rliable_tmaze.json --device cuda
+# Run everything on the GPU (when available) with a calibrated number of parallel
+# runs; repeat the same command to resume after an interruption
+python run_rliable_grid.py --grid experiments/rliable_tmaze.json --workers auto
 
 # Split the work between machines, e.g. one model or one seed each
 python run_rliable_grid.py --grid experiments/rliable_tmaze.json --only model=DTQN-kNN
@@ -357,7 +358,8 @@ python run_rliable_grid.py --grid experiments/rliable_tmaze.json --seeds 10
 | `--only KEY=VALUE` | none | Run only jobs whose `RunConfig` field matches; repeat to combine |
 | `--raw-dir` | `results/raw` | Where records and metadata are written |
 | `--artifacts-dir` | `results/runs` | Where models, logs and trajectories are written |
-| `--device` | `cpu` | PyTorch device |
+| `--device` | `auto` | PyTorch device; `auto` uses CUDA when PyTorch can, otherwise the CPU |
+| `--workers` | `1` | Runs in parallel processes; `auto` calibrates on short probe runs first |
 | `--dry-run` | off | List the selected jobs and whether each is complete |
 
 To check the pipeline before the full grid, run the CPU smoke test (2 models x 2
@@ -392,6 +394,19 @@ Training artifacts (final `model.pt`, CSV logs, trajectories) go to
 starts. Add a junction reader to `SIDE_READERS` in
 [`evaluation/sides.py`](evaluation/sides.py) for a new environment, and a model
 name to the grid for a new model.
+
+**Speed.** On an RTX 3070, a short DTQN-kNN run was 8x faster on the GPU than on
+the 12-core CPU, and DTQN 1.6x faster. In a profiled CPU run, gradient updates
+took about 94% of the time and periodic evaluation about 1%. With `--workers auto`, the runner first trains
+one short probe per worker (cycling over the grid's models) with 1, 2, 4 and 8
+workers, stops when a larger count is not at least 10% faster, and runs the grid
+with the best count. Each worker gets an equal share of the CPU threads. On the
+GPU, every worker also needs its own CUDA context, which takes about 3.4 GB with
+PyTorch 1.11 (CUDA 11.3) on an RTX 3070; a worker count whose probes fail is
+skipped, so an 8 GB card shared with a desktop typically gets 2 workers. All runs
+of a grid use the same device, and each run's metadata records the device, worker
+count and threads. Calibration repeats on every invocation; pass the chosen
+number explicitly (for example `--workers 4`) to skip it when resuming.
 
 **Failures and resuming.** A run that fails is logged with its traceback, the
 remaining runs continue, and the script exits with status 1. Repeat the command
@@ -434,6 +449,8 @@ length) combination; score matrices have shape `(n_seeds, n_tasks)`.
 Bootstrap intervals use a fixed random seed, so repeating the report on the same
 records gives the same numbers. When the runs come from different code versions,
 the report logs a warning and `summary.md` lists each git commit and source hash.
+It does the same when runs trained on different devices (`summary.md` lists them),
+because CPU and GPU arithmetic differ slightly.
 
 ### Interpret the results
 
