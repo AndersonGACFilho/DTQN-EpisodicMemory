@@ -29,6 +29,21 @@ from evaluation.records import EpisodeRecord, metadata_path, read_records, recor
 from utils.experiment_io import read_json
 
 DEVELOPMENT_REPS = 2_000
+# Tables also written as LaTeX floats for the paper: name -> caption
+LATEX_CAPTIONS = {
+    "aggregate_metrics": (
+        "Final success rate over training seeds: point estimate and 95% stratified "
+        "bootstrap confidence interval."
+    ),
+    "probability_of_improvement": (
+        "Probability that a run of the candidate beats a run of the baseline on the "
+        "same task, with 95% bootstrap confidence interval."
+    ),
+    "side_bias_summary": (
+        "Runs whose final evaluation ends in the same branch in more than 90% of "
+        "episodes (fixed-side policies), and mean final success rate."
+    ),
+}
 PROFILE_THRESHOLDS = np.linspace(0.0, 1.0, 101)
 
 logger = logging.getLogger("rliable_report")
@@ -95,6 +110,12 @@ def write_tables(
     sections = [header]
     for name, rows in named_rows.items():
         tables.write_csv(summary_dir / f"{name}.csv", rows)
+        if name in LATEX_CAPTIONS:
+            label = "tab:" + name.replace("_", "-")
+            latex = tables.latex_table(
+                tables.with_intervals(rows), LATEX_CAPTIONS[name], label
+            )
+            (summary_dir / f"{name}.tex").write_text(latex)
         title = name.replace("_", " ").capitalize()
         sections.append(f"## {title}\n\n{tables.markdown_table(rows)}")
     (summary_dir / "summary.md").write_text("\n".join(sections))
@@ -170,6 +191,7 @@ def main() -> None:
     )
     named_rows = {
         "aggregate_metrics": tables.aggregate_rows(aggregates, metric_names),
+        "side_bias_summary": tables.side_bias_summary_rows(diagnostics),
         "side_bias": tables.side_bias_rows(diagnostics),
     }
     if pairs:
