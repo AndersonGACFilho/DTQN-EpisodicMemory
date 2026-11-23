@@ -38,6 +38,13 @@ class RunConfig:
     identity: bool = False
     pos: str = "learned"
     bag_size: int = 0
+    memory_enabled: bool = True
+    memory_size: int = 256
+    memory_top_k: int = 8
+    memory_layer: int = -1
+    memory_gate: bool = True
+    memory_gate_bias_init: float = 0.0
+    memory_stop_grad: bool = True
     eval_episodes: int = 100
     eval_seed: int = 10_000
 
@@ -48,7 +55,15 @@ class RunConfig:
         for key, value in self.to_dict().items():
             if isinstance(value, float) and not math.isfinite(value):
                 raise ValueError(f"{key} must be finite")
-        if self.model not in {"DTQN", "DTQN-bag", "ADRQN", "DRQN", "DARQN", "DQN"}:
+        if self.model not in {
+            "DTQN",
+            "DTQN-bag",
+            "DTQN-kNN",
+            "ADRQN",
+            "DRQN",
+            "DARQN",
+            "DQN",
+        }:
             raise ValueError(f"Unknown model: {self.model}")
         if not self.env:
             raise ValueError("env must not be empty")
@@ -65,6 +80,8 @@ class RunConfig:
             "heads",
             "layers",
             "eval_episodes",
+            "memory_size",
+            "memory_top_k",
         ):
             if getattr(self, key) <= 0:
                 raise ValueError(f"{key} must be positive")
@@ -92,6 +109,13 @@ class RunConfig:
                 raise ValueError("in_embed must be divisible by heads")
             if self.a_embed >= self.in_embed:
                 raise ValueError("a_embed must be smaller than in_embed")
+        if self.model == "DTQN-kNN" and self.memory_enabled:
+            if self.bag_size:
+                raise ValueError("DTQN-kNN requires bag_size = 0")
+            if not -self.layers <= self.memory_layer < self.layers:
+                raise ValueError(
+                    "memory_layer must select an existing transformer layer"
+                )
         if self.model in {"DQN", "DRQN", "DARQN", "ADRQN"} and self.bag_size:
             raise ValueError("bag_size is supported only for DTQN models")
         if self.env in {"PassiveTMaze-v0", "NoisyTMaze-v0", "AssociativeCorridor-v0"}:
@@ -126,6 +150,14 @@ def add_config_arguments(parser: argparse.ArgumentParser) -> None:
         else:
             kwargs["type"] = type(default)
         parser.add_argument("--" + field.name.replace("_", "-"), **kwargs)
+        if isinstance(default, bool):
+            parser.add_argument(
+                "--no-" + field.name.replace("_", "-"),
+                dest=field.name,
+                action="store_false",
+                default=default,
+                help="Disable " + field.name.replace("_", " "),
+            )
 
 
 def config_from_args(args: argparse.Namespace) -> RunConfig:
@@ -141,6 +173,8 @@ def config_cli(params: Mapping[str, Any]) -> List[str]:
         if isinstance(value, bool):
             if value:
                 result.append("--" + key.replace("_", "-"))
+            elif DEFAULTS.get(key) is True:
+                result.append("--no-" + key.replace("_", "-"))
         else:
             result.extend(["--" + key.replace("_", "-"), str(value)])
     return result

@@ -119,7 +119,7 @@ hyphens. They cannot be supplied as overrides to `train_and_eval.py`.
 
 | JSON key | Default | Effect |
 |---|---|---|
-| `model` | `DTQN` | Existing agent/network name: DTQN, DTQN-bag, DRQN, ADRQN, DARQN, DQN |
+| `model` | `DTQN` | Agent/network name: DTQN, DTQN-bag, DTQN-kNN, DRQN, ADRQN, DARQN, DQN |
 | `env` | `DiscreteCarFlag-v0` | One environment ID or supported GridVerse YAML filename |
 | `corridor_length` | `10` | Passive/Noisy length (>=1) or associative decision positions (>=8) |
 | `noise_level` | `0.5` | Noisy T-Maze distractor probability [0,1] |
@@ -147,6 +147,20 @@ hyphens. They cannot be supplied as overrides to `train_and_eval.py`.
 | `identity` | `false` | Identity map reordering; standalone CLI uses `--identity` |
 | `pos` | `learned` | Position encoding: learned, sin, none |
 | `bag_size` | `0` | Existing persistent observation bag; DTQN only, not kNN episodic memory |
+| `memory_enabled` | `true` | Active only for DTQN-kNN; false selects the original DTQN network and agent |
+| `memory_size` | `256` | External FIFO capacity in timesteps per episode |
+| `memory_top_k` | `8` | Retrieved neighbours per query/head |
+| `memory_layer` | `-1` | Zero-based block index; -1 selects the last block |
+| `memory_gate` | `true` | Mix local and memory attention; false uses the local result |
+| `memory_gate_bias_init` | `0.0` | Initial per-head sigmoid gate bias |
+| `memory_stop_grad` | `true` | Detach prefix K/V; false allows policy-loss gradients through selected prefix entries |
+
+Use `--no-memory-enabled`, `--no-memory-gate` or `--no-memory-stop-grad` to
+disable these booleans in `train.py`; the sweep passes JSON false values correctly.
+See [the integration guide](knn-integration.md) for memory population and validation.
+`DTQN-kNN` requires `bag_size=0`. `experiments/knn-smoke.json` compares two tiny
+baseline/memory jobs; `experiments/knn-short-check.json` is the short-maze sanity
+comparison at two independent training budgets.
 
 The factory's existing model implementations are reused. A name being accepted
 does not guarantee every legacy model/environment/embedding combination works;

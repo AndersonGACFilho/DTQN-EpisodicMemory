@@ -148,6 +148,26 @@ class ReplayBuffer:
         np.ndarray,
         np.ndarray,
     ]:
+        return self.sample_with_metadata(batch_size)[:7]
+
+    def sample_with_metadata(
+        self, batch_size: int
+    ) -> Tuple[
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+        np.ndarray,
+    ]:
+        """The normal sample plus its episode rows and local-window starts.
+
+        Memory reconstruction reads only earlier steps from these same rows.
+        Returning metadata must not change baseline sampling or its RNG draws.
+        """
         # Exclude the current episode we're in
         valid_episodes = [
             i
@@ -176,6 +196,8 @@ class ReplayBuffer:
             self.actions[episode_idxes, 1 + transitions],
             self.dones[episode_idxes, transitions],
             np.clip(self.episode_lengths[episode_idxes], 0, self.context_len),
+            episode_idxes.reshape(-1),
+            transition_starts,
         )
 
     # TODO:
