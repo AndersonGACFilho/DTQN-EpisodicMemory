@@ -81,6 +81,13 @@ def code_versions(jobs: Sequence[RunJob], raw_dir: Path) -> List[Dict[str, Any]]
     ]
 
 
+def run_devices(jobs: Sequence[RunJob], raw_dir: Path) -> List[str]:
+    """Devices the runs trained on; mixing them adds hardware numerics to the comparison."""
+    return sorted(
+        {read_json(metadata_path(raw_dir, job.run_id))["device"] for job in jobs}
+    )
+
+
 def write_tables(
     summary_dir: Path, named_rows: Dict[str, List[tables.Row]], header: str
 ) -> None:
@@ -99,6 +106,7 @@ def report_header(
     tasks: Sequence[Any],
     steps: Sequence[int],
     code: Any,
+    devices: Sequence[str],
 ) -> str:
     return (
         "# rliable summary\n\n"
@@ -109,6 +117,7 @@ def report_header(
         f"- Fixed-side policy: more than {SIDE_BIAS_THRESHOLD:.0%} of final "
         "evaluation episodes end in the same branch\n"
         f"- Code versions: {code}\n"
+        f"- Devices: {list(devices)}\n"
     )
 
 
@@ -123,6 +132,9 @@ def main() -> None:
     code = code_versions(jobs, args.raw_dir)
     if len(code) > 1:
         logger.warning("Runs come from %d different code versions", len(code))
+    devices = run_devices(jobs, args.raw_dir)
+    if len(devices) > 1:
+        logger.warning("Runs trained on different devices: %s", devices)
     data = build_score_data(records)
     final_scores = data.final_scores
     metric_names = list(AGGREGATE_METRICS)
@@ -170,7 +182,7 @@ def main() -> None:
         named_rows["probability_of_improvement"] = tables.improvement_rows(
             improvements, PAIR_SEPARATOR
         )
-    header = report_header(args.reps, data.seeds, data.tasks, data.steps, code)
+    header = report_header(args.reps, data.seeds, data.tasks, data.steps, code, devices)
     write_tables(args.output_dir / "summary", named_rows, header)
     logger.info(
         "Wrote figures to %s and tables to %s", figures_dir, args.output_dir / "summary"
