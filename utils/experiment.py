@@ -21,7 +21,7 @@ from utils.experiment_io import (
     write_json,
 )
 from utils.logging_utils import RecordCSV
-from utils.random import RNG, set_global_seed
+from utils.random import RNG, make_deterministic, set_global_seed
 from utils.trajectories import TrajectoryWriter, world_state
 
 EPISODE_COLUMNS = [
@@ -280,6 +280,7 @@ def train_run(
     output.mkdir(parents=True, exist_ok=True)
     if any(output.iterdir()):
         raise ValueError(f"Training output must be empty: {output}")
+    make_deterministic()
     meter = ResourceMeter(device)
     env, horizon = make_environment(config)
     try:
@@ -446,6 +447,7 @@ def eval_run(
 ) -> Dict[str, Any]:
     if eval_episodes < 1 or eval_seed < 0:
         raise ValueError("eval_episodes must be positive and eval_seed nonnegative")
+    make_deterministic()
     output.mkdir(parents=True, exist_ok=True)
     if any(output.iterdir()):
         raise ValueError(f"Evaluation output must be empty: {output}")

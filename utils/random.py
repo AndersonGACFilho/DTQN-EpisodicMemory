@@ -6,9 +6,23 @@ import gym
 import numpy as np
 import torch
 
+# cuBLAS needs a fixed workspace to be deterministic; it must be set before CUDA starts
+CUBLAS_WORKSPACE_CONFIG = ":4096:8"
+# CPU results change with the intra-op thread count, so every run uses the same one
+RUN_THREADS = 1
+
 
 class RNG:
     rng: np.random.Generator = None
+
+
+def make_deterministic() -> None:
+    """Same seed, device and code give the same result, or PyTorch raises an error."""
+    os.environ.setdefault("CUBLAS_WORKSPACE_CONFIG", CUBLAS_WORKSPACE_CONFIG)
+    torch.set_num_threads(RUN_THREADS)
+    torch.backends.cudnn.benchmark = False
+    torch.backends.cudnn.deterministic = True
+    torch.use_deterministic_algorithms(True)
 
 
 def set_global_seed(seed: int, *args: Tuple[gym.Env]) -> None:

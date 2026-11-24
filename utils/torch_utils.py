@@ -1,4 +1,16 @@
+import torch
 import torch.nn as nn
+import torch.nn.functional as F
+
+
+def select_action_values(q_values: torch.Tensor, actions: torch.Tensor) -> torch.Tensor:
+    """Same values and gradients as q_values.gather(-1, actions), bit for bit.
+
+    gather's CUDA backward uses scatter_add, which PyTorch's deterministic mode
+    rejects. Multiplying by a one-hot mask and summing adds only exact zeros.
+    """
+    mask = F.one_hot(actions.squeeze(-1), q_values.shape[-1]).to(q_values.dtype)
+    return (q_values * mask).sum(dim=-1, keepdim=True)
 
 
 def init_weights(module):

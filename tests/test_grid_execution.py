@@ -21,7 +21,6 @@ from evaluation.execution import (
     ExecutionPlan,
     run_plan,
     run_tasks,
-    threads_per_worker,
 )
 from evaluation.grid import RunJob, expand_jobs, load_grid_spec
 from evaluation.records import EpisodeRecord, metadata_path, read_records, records_path
@@ -69,12 +68,6 @@ class DeviceTests(unittest.TestCase):
     def test_explicit_device_is_kept(self) -> None:
         with patch("torch.cuda.is_available", return_value=True):
             self.assertEqual(resolve_device("cpu"), "cpu")
-
-    def test_workers_share_the_cpu_cores(self) -> None:
-        with patch("os.cpu_count", return_value=12):
-            self.assertEqual(threads_per_worker(1), 12)
-            self.assertEqual(threads_per_worker(4), 3)
-            self.assertEqual(threads_per_worker(24), 1)
 
 
 class RouterTests(unittest.TestCase):

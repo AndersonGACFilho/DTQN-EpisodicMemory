@@ -35,12 +35,17 @@ def derive_eval_seed(train_seed: int) -> int:
 
 @dataclass(frozen=True)
 class GridSpec:
-    parameters: Dict[str, List[Any]]
+    # Each group is one Cartesian product; the grid is their union
+    parameter_groups: List[Dict[str, List[Any]]]
     train_seed_count: int
     eval_episodes: int
     eval_interval: int
     # (candidate model, baseline model) pairs for probability of improvement
     comparisons: List[Tuple[str, str]]
+
+    @property
+    def models(self) -> List[str]:
+        return [model for group in self.parameter_groups for model in group["model"]]
 
     @property
     def train_seeds(self) -> List[int]:
@@ -87,24 +92,38 @@ def _comparisons(raw: Any, models: List[Any]) -> List[Tuple[str, str]]:
     return pairs
 
 
+def _parameter_group(raw: Any) -> Dict[str, List[Any]]:
+    if isinstance(raw, dict):
+        owned = PROTOCOL_KEYS & set(raw)
+        if owned:
+            raise ValueError(
+                f"Set {sorted(owned)} through the protocol keys, not parameters"
+            )
+    return parse_grid(raw, REQUIRED_PARAMETERS)
+
+
+def _parameter_groups(raw: Any) -> List[Dict[str, List[Any]]]:
+    """One object of value lists, or a list of them for models with other axes."""
+    groups = raw if isinstance(raw, list) else [raw]
+    if not groups:
+        raise ValueError("parameters must not be an empty list")
+    return [_parameter_group(group) for group in groups]
+
+
 def load_grid_spec(path: Path, train_seed_count: Optional[int] = None) -> GridSpec:
     raw = read_unique_json(path)
     if not isinstance(raw, dict) or set(raw) != SPEC_KEYS:
         raise ValueError(
             f"{path} must be an object with exactly the keys {sorted(SPEC_KEYS)}"
         )
-    owned = PROTOCOL_KEYS & set(raw["parameters"])
-    if owned:
-        raise ValueError(
-            f"Set {sorted(owned)} through the protocol keys, not parameters"
-        )
-    parameters = parse_grid(raw["parameters"], REQUIRED_PARAMETERS)
+    groups = _parameter_groups(raw["parameters"])
+    models = [model for group in groups for model in group["model"]]
     spec = GridSpec(
-        parameters=parameters,
+        parameter_groups=groups,
         train_seed_count=_positive_int(raw, "train_seeds"),
         eval_episodes=_positive_int(raw, "eval_episodes"),
         eval_interval=_positive_int(raw, "eval_interval"),
-        comparisons=_comparisons(raw["comparisons"], parameters["model"]),
+        comparisons=_comparisons(raw["comparisons"], models),
     )
     if train_seed_count is not None:
         if train_seed_count <= 0:
@@ -114,8 +133,11 @@ def load_grid_spec(path: Path, train_seed_count: Optional[int] = None) -> GridSp
 
 
 def expand_jobs(spec: GridSpec) -> List[RunJob]:
-    jobs = []
-    for params in expand_grid(spec.parameters):
+    jobs: List[RunJob] = []
+    combinations = [
+        params for group in spec.parameter_groups for params in expand_grid(group)
+    ]
+    for params in combinations:
         for train_seed in spec.train_seeds:
             config = RunConfig(
                 **{
@@ -127,6 +149,10 @@ def expand_jobs(spec: GridSpec) -> List[RunJob]:
             )
             config.validate()
             jobs.append(RunJob(config, spec.eval_interval))
+    run_ids = [job.run_id for job in jobs]
+    duplicates = sorted({run_id for run_id in run_ids if run_ids.count(run_id) > 1})
+    if duplicates:
+        raise ValueError(f"Parameter groups overlap; duplicated runs: {duplicates}")
     return jobs
 
 

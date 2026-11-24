@@ -4,7 +4,7 @@ Pluggable kNN episodic memory (from Memorizing Transformers) for DTQN and DRQN a
 
 > **Status:** UFRGS Deep Learning final project (Group 7), due **11/30/2026**. This repository is a fork of [kevslinger/DTQN](https://github.com/kevslinger/DTQN); the original DTQN documentation is kept [below](#deep-transformer-q-networks-for-partially-observable-reinforcement-learning).
 >
-> **Paper (Overleaf):** _link to be added_ ([#42](https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/issues/42))
+> **Paper (Overleaf, view only):** [overleaf.com/project/6b0453cbbdd64fc49b487d50](https://www.overleaf.com/project/6b0453cbbdd64fc49b487d50/share#0dc17bf43fe1dac0e2fa93f1b8df99b053925f4a2c74ea24) · synced with [`paper/`](paper/) ([#42](https://github.com/AndersonGACFilho/DTQN-EpisodicMemory/issues/42))
 
 ## Overview
 
@@ -328,7 +328,11 @@ sequence diagrams.
 
 [`experiments/rliable_tmaze.json`](experiments/rliable_tmaze.json) is the single
 source of truth for the grid: `parameters` lists `RunConfig` values (full
-Cartesian product), `train_seeds` the number of seeds (1..N), `eval_episodes`,
+Cartesian product), or a list of such groups whose products are combined, so
+models with different axes share one grid. The T-Maze grid has three groups:
+DTQN and DTQN-kNN over context and layers, DRQN over context (its training
+sequence length), and memoryless DQN with context 1. Overlapping groups are
+rejected. `train_seeds` sets the number of seeds (1..N), then `eval_episodes`,
 `eval_interval` (training steps between evaluations) and `comparisons`
 (`[candidate, baseline]` models). `parameters` must set `model`, `env` and
 `num_steps`, and must not set `training_seed`, `eval_seed` or `eval_episodes`,
@@ -336,7 +340,8 @@ which the protocol derives. Check that its hyperparameters match the runs you
 want to reproduce before launching it.
 
 ```bash
-# List the 60 jobs (2 models x 3 contexts x 2 layers x 5 seeds) and their status
+# List the 80 jobs and their status: 60 DTQN/DTQN-kNN (2 models x 3 contexts x
+# 2 layers x 5 seeds), 15 DRQN (3 contexts x 5 seeds) and 5 DQN
 python run_rliable_grid.py --grid experiments/rliable_tmaze.json --dry-run
 
 # Run everything on the GPU (when available) with a calibrated number of parallel
@@ -362,8 +367,8 @@ python run_rliable_grid.py --grid experiments/rliable_tmaze.json --seeds 10
 | `--workers` | `1` | Runs in parallel processes; `auto` calibrates on short probe runs first |
 | `--dry-run` | off | List the selected jobs and whether each is complete |
 
-To check the pipeline before the full grid, run the CPU smoke test (2 models x 2
-seeds, 3,000 steps, about 6 minutes) into its own folders:
+To check the pipeline before the full grid, run the smoke test (DTQN, DTQN-kNN,
+DRQN and DQN, 2 seeds each, 3,000 steps) into its own folders:
 
 ```bash
 python run_rliable_grid.py --grid experiments/rliable_smoke.json \
@@ -397,16 +402,23 @@ name to the grid for a new model.
 
 **Speed.** On an RTX 3070, a short DTQN-kNN run was 8x faster on the GPU than on
 the 12-core CPU, and DTQN 1.6x faster. In a profiled CPU run, gradient updates
-took about 94% of the time and periodic evaluation about 1%. With `--workers auto`, the runner first trains
-one short probe per worker (cycling over the grid's models) with 1, 2, 4 and 8
-workers, stops when a larger count is not at least 10% faster, and runs the grid
-with the best count. Each worker gets an equal share of the CPU threads. On the
-GPU, every worker also needs its own CUDA context, which takes about 3.4 GB with
-PyTorch 1.11 (CUDA 11.3) on an RTX 3070; a worker count whose probes fail is
-skipped, so an 8 GB card shared with a desktop typically gets 2 workers. All runs
-of a grid use the same device, and each run's metadata records the device, worker
-count and threads. Calibration repeats on every invocation; pass the chosen
-number explicitly (for example `--workers 4`) to skip it when resuming.
+took about 94% of the time and periodic evaluation about 1%. With
+`--workers auto`, the runner first trains one short probe per worker (cycling over
+the grid's models) with 1, 2, 4 and 8 workers, stops when a larger count fails or
+is not at least 10% faster, and runs the grid with the best count. On the GPU,
+every worker needs its own CUDA context, which takes about 3.4 GB with PyTorch
+1.11 (CUDA 11.3), so an 8 GB card shared with a desktop typically gets 2 workers.
+All runs of a grid use the same device, and each run's metadata records the
+device, mode and worker count. Calibration repeats on every invocation; pass the
+chosen number explicitly (for example `--workers 2`) to skip it when resuming.
+
+**Reproducibility.** The same seed, device and code give bit-identical weights and
+evaluation records, in sequential and parallel mode alike. Every run enables
+PyTorch's deterministic algorithms (an operation without a deterministic
+implementation raises an error instead of varying silently) and uses one CPU
+thread, because CPU results change with the thread count. Results are not
+bit-identical across devices: CPU and GPU arithmetic differ slightly, which is
+why the report flags mixed devices.
 
 **Failures and resuming.** A run that fails is logged with its traceback, the
 remaining runs continue, and the script exits with status 1. Repeat the command
@@ -451,6 +463,26 @@ records gives the same numbers. When the runs come from different code versions,
 the report logs a warning and `summary.md` lists each git commit and source hash.
 It does the same when runs trained on different devices (`summary.md` lists them),
 because CPU and GPU arithmetic differ slightly.
+
+### Hypothesis criteria (#1)
+
+The report's `hypothesis_criteria` table states, for each DTQN-kNN/DTQN pair with
+the same context and layers, whether the criterion is met. A configuration is
+*beyond the window* when the cue is older than the context (Passive T-Maze: the
+cue is `corridor_length + 1` observations before the decision), and *within the
+window* otherwise.
+
+| Regime | Criterion | Meaning |
+|---|---|---|
+| Beyond the window | DTQN-kNN IQM final success rate >= 0.9 **and** the whole 95% CI of P(DTQN-kNN > DTQN) above 0.5 | The memory recovers the cue that DTQN loses |
+| Within the window | the 95% CI of P(DTQN-kNN > DTQN) not entirely below 0.5 **and** DTQN-kNN IQM at most 0.05 below DTQN | Non-inferiority: the memory does not hurt when it is not needed |
+
+A criterion that is not met is reported as such and discussed in the paper. The
+statistical protocol is 5 training seeds, 100 evaluation episodes per run, and
+95% stratified bootstrap CIs; tables also give the standard deviation over runs.
+The thresholds live in [`analysis/criteria.py`](analysis/criteria.py). The report
+also aggregates the final return, min-max normalized per task over all runs
+(`aggregate_metrics_return`).
 
 ### Interpret the results
 

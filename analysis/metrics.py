@@ -1,6 +1,7 @@
 """Score matrices from tidy records and rliable interval estimates.
 
-Scores are success rates, already in [0, 1], so no normalization is needed.
+Success rates are already in [0, 1]; returns are min-max normalized per task.
+Register a new score in SCORE_KINDS.
 Register a new aggregate metric by adding it to AGGREGATE_METRICS.
 """
 
@@ -69,12 +70,31 @@ class ScoreData:
         return {label: curve[:, :, -1] for label, curve in self.curves.items()}
 
 
-def success_rates(
-    records: Sequence[EpisodeRecord],
-) -> Dict[Tuple[Tuple[Any, ...], Tuple[Any, ...], int, int], float]:
-    """Mean success per (algorithm, task, train seed, step) evaluation."""
-    outcomes: Dict[Tuple[Tuple[Any, ...], Tuple[Any, ...], int, int], List[bool]]
-    outcomes = defaultdict(list)
+ScoreKey = Tuple[Tuple[Any, ...], Tuple[Any, ...], int, int]
+
+
+@dataclass(frozen=True)
+class ScoreKind:
+    """How one evaluation episode turns into a score in [0, 1]."""
+
+    episode_value: Callable[[EpisodeRecord], float]
+    # Rescale each task's values to [0, 1] with the min and max over all runs
+    normalize: bool
+
+
+SUCCESS_RATE = "success_rate"
+NORMALIZED_RETURN = "normalized_return"
+SCORE_KINDS: Dict[str, ScoreKind] = {
+    SUCCESS_RATE: ScoreKind(lambda record: float(record.success), normalize=False),
+    NORMALIZED_RETURN: ScoreKind(lambda record: record.episode_return, normalize=True),
+}
+
+
+def evaluation_means(
+    records: Sequence[EpisodeRecord], kind: ScoreKind
+) -> Dict[ScoreKey, float]:
+    """Mean episode value per (algorithm, task, train seed, step) evaluation."""
+    values: Dict[ScoreKey, List[float]] = defaultdict(list)
     for record in records:
         key = (
             _key(record, ALGORITHM_FIELDS),
@@ -82,12 +102,30 @@ def success_rates(
             record.train_seed,
             record.step,
         )
-        outcomes[key].append(record.success)
-    return {key: float(np.mean(values)) for key, values in outcomes.items()}
+        values[key].append(kind.episode_value(record))
+    return {key: float(np.mean(scores)) for key, scores in values.items()}
 
 
-def build_score_data(records: Sequence[EpisodeRecord]) -> ScoreData:
-    rates = success_rates(records)
+def normalize_per_task(means: Dict[ScoreKey, float]) -> Dict[ScoreKey, float]:
+    """Min-max scale each task over every algorithm, seed and step."""
+    by_task: Dict[Tuple[Any, ...], List[float]] = defaultdict(list)
+    for (_, task, _, _), value in means.items():
+        by_task[task].append(value)
+    bounds = {task: (min(values), max(values)) for task, values in by_task.items()}
+    normalized = {}
+    for key, value in means.items():
+        low, high = bounds[key[1]]
+        normalized[key] = (value - low) / (high - low) if high > low else 0.0
+    return normalized
+
+
+def build_score_data(
+    records: Sequence[EpisodeRecord], score: str = SUCCESS_RATE
+) -> ScoreData:
+    kind = SCORE_KINDS[score]
+    rates = evaluation_means(records, kind)
+    if kind.normalize:
+        rates = normalize_per_task(rates)
     if not rates:
         raise IncompleteScoresError("No evaluation records to analyse")
     algorithms = sorted({key[0] for key in rates}, key=lambda a: (a[1:], a[0]))
@@ -120,6 +158,14 @@ def build_score_data(records: Sequence[EpisodeRecord]) -> ScoreData:
         for algorithm in algorithms
     }
     return ScoreData(algorithms, tasks, seeds, steps, curves)
+
+
+def score_spread(final_scores: Dict[str, Scores]) -> Dict[str, float]:
+    """Sample standard deviation over every (seed, task) final score."""
+    return {
+        label: float(np.std(scores, ddof=1)) if scores.size > 1 else 0.0
+        for label, scores in final_scores.items()
+    }
 
 
 def _aggregate_all(scores: Scores) -> Scores:

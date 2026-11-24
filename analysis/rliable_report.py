@@ -12,9 +12,11 @@ from typing import Any, Dict, List, Sequence
 import numpy as np
 
 from analysis import plots, tables
+from analysis.criteria import HYPOTHESIS, describe_criteria, evaluate_hypothesis
 from analysis.diagnostics import SIDE_BIAS_THRESHOLD, side_bias
 from analysis.metrics import (
     AGGREGATE_METRICS,
+    NORMALIZED_RETURN,
     PAIR_SEPARATOR,
     aggregate_estimates,
     build_score_data,
@@ -22,6 +24,7 @@ from analysis.metrics import (
     improvement_estimates,
     iqm_curve_estimates,
     performance_profiles,
+    score_spread,
     task_label,
 )
 from evaluation.grid import RunJob, expand_jobs, is_complete, load_grid_spec
@@ -29,6 +32,28 @@ from evaluation.records import EpisodeRecord, metadata_path, read_records, recor
 from utils.experiment_io import read_json
 
 DEVELOPMENT_REPS = 2_000
+# Tables also written as LaTeX floats for the paper: name -> caption
+LATEX_CAPTIONS = {
+    "aggregate_metrics": (
+        "Final success rate over training seeds: point estimate, 95% stratified "
+        "bootstrap confidence interval and standard deviation over runs."
+    ),
+    "probability_of_improvement": (
+        "Probability that a run of the candidate beats a run of the baseline on the "
+        "same task, with 95% bootstrap confidence interval."
+    ),
+    "aggregate_metrics_return": (
+        "Final return, min-max normalized per task over all runs: point estimate, "
+        "95% stratified bootstrap confidence interval and standard deviation."
+    ),
+    "hypothesis_criteria": (
+        "Hypothesis criteria per DTQN-kNN/DTQN pair (issue #1). " + describe_criteria()
+    ),
+    "side_bias_summary": (
+        "Runs whose final evaluation ends in the same branch in more than 90% of "
+        "episodes (fixed-side policies), and mean final success rate."
+    ),
+}
 PROFILE_THRESHOLDS = np.linspace(0.0, 1.0, 101)
 
 logger = logging.getLogger("rliable_report")
@@ -95,6 +120,12 @@ def write_tables(
     sections = [header]
     for name, rows in named_rows.items():
         tables.write_csv(summary_dir / f"{name}.csv", rows)
+        if name in LATEX_CAPTIONS:
+            label = "tab:" + name.replace("_", "-")
+            latex = tables.latex_table(
+                tables.with_intervals(rows), LATEX_CAPTIONS[name], label
+            )
+            (summary_dir / f"{name}.tex").write_text(latex)
         title = name.replace("_", " ").capitalize()
         sections.append(f"## {title}\n\n{tables.markdown_table(rows)}")
     (summary_dir / "summary.md").write_text("\n".join(sections))
@@ -118,6 +149,7 @@ def report_header(
         "evaluation episodes end in the same branch\n"
         f"- Code versions: {code}\n"
         f"- Devices: {list(devices)}\n"
+        f"- Hypothesis criteria: {describe_criteria()}\n"
     )
 
 
@@ -168,8 +200,21 @@ def main() -> None:
         figures_dir,
         "iqm_learning_curves",
     )
+    returns = build_score_data(records, NORMALIZED_RETURN).final_scores
+    return_aggregates = aggregate_estimates(returns, args.reps)
+    plots.save_figure(
+        plots.plot_aggregates(return_aggregates, metric_names, colors),
+        figures_dir,
+        "aggregate_metrics_return",
+    )
     named_rows = {
-        "aggregate_metrics": tables.aggregate_rows(aggregates, metric_names),
+        "aggregate_metrics": tables.aggregate_rows(
+            aggregates, metric_names, score_spread(final_scores)
+        ),
+        "aggregate_metrics_return": tables.aggregate_rows(
+            return_aggregates, metric_names, score_spread(returns)
+        ),
+        "side_bias_summary": tables.side_bias_summary_rows(diagnostics),
         "side_bias": tables.side_bias_rows(diagnostics),
     }
     if pairs:
@@ -182,6 +227,11 @@ def main() -> None:
         named_rows["probability_of_improvement"] = tables.improvement_rows(
             improvements, PAIR_SEPARATOR
         )
+        if tuple(HYPOTHESIS) in spec.comparisons:
+            verdicts = evaluate_hypothesis(
+                data.algorithms, data.tasks, aggregates, improvements, metric_names
+            )
+            named_rows["hypothesis_criteria"] = tables.criteria_rows(verdicts)
     header = report_header(args.reps, data.seeds, data.tasks, data.steps, code, devices)
     write_tables(args.output_dir / "summary", named_rows, header)
     logger.info(
