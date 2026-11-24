@@ -5,3 +5,18 @@
 % (DTQN, DRQN), hyperparameters, seeds, metrics (success rate,
 % 95% CI, wall clock, peak GPU memory).
 % refs: \cite{esslinger2022dtqn,hausknecht2015drqn,mnih2015dqn}
+
+\paragraph{Evaluation protocol and criteria.}
+Each configuration is trained with five seeds and evaluated greedily on 100
+episodes; we report the interquartile mean (IQM), mean, median and optimality gap
+of the final success rate with 95\% stratified bootstrap confidence intervals and
+the standard deviation over runs, the final return min-max normalized per task,
+and the probability of improvement $P(X > Y)$ \cite{agarwal2021rliable}.
+A configuration is \emph{beyond the window} when the cue is older than the
+context, i.e.\ when the context holds fewer than $L + 1$ observations for
+corridor length $L$, and \emph{within the window} otherwise. Beyond the window,
+the memory succeeds when DTQN-kNN reaches an IQM success rate of at least $0.9$
+and the 95\% confidence interval of $P(\text{DTQN-kNN} > \text{DTQN})$ lies
+above $0.5$. Within the window, DTQN-kNN ties with DTQN (non-inferiority) when
+that interval is not entirely below $0.5$ and its IQM is at most $0.05$ below
+that of DTQN. A criterion that is not met is reported as such.

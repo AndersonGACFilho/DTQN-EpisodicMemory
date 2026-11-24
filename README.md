@@ -464,6 +464,26 @@ the report logs a warning and `summary.md` lists each git commit and source hash
 It does the same when runs trained on different devices (`summary.md` lists them),
 because CPU and GPU arithmetic differ slightly.
 
+### Hypothesis criteria (#1)
+
+The report's `hypothesis_criteria` table states, for each DTQN-kNN/DTQN pair with
+the same context and layers, whether the criterion is met. A configuration is
+*beyond the window* when the cue is older than the context (Passive T-Maze: the
+cue is `corridor_length + 1` observations before the decision), and *within the
+window* otherwise.
+
+| Regime | Criterion | Meaning |
+|---|---|---|
+| Beyond the window | DTQN-kNN IQM final success rate >= 0.9 **and** the whole 95% CI of P(DTQN-kNN > DTQN) above 0.5 | The memory recovers the cue that DTQN loses |
+| Within the window | the 95% CI of P(DTQN-kNN > DTQN) not entirely below 0.5 **and** DTQN-kNN IQM at most 0.05 below DTQN | Non-inferiority: the memory does not hurt when it is not needed |
+
+A criterion that is not met is reported as such and discussed in the paper. The
+statistical protocol is 5 training seeds, 100 evaluation episodes per run, and
+95% stratified bootstrap CIs; tables also give the standard deviation over runs.
+The thresholds live in [`analysis/criteria.py`](analysis/criteria.py). The report
+also aggregates the final return, min-max normalized per task over all runs
+(`aggregate_metrics_return`).
+
 ### Interpret the results
 
 - **IQM** (interquartile mean): the mean of the middle 50% of all run x task
