@@ -3,7 +3,7 @@
     {
       "model": ["DTQN", "DTQN-kNN"],
       "env": ["PassiveTMaze-v0"],
-      "context": [6, 12, 18],
+      "context": [6, 12],
       "layers": [2, 3],
       "corridor_length": [10],
       "num_steps": [32000],
