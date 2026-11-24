@@ -12,9 +12,11 @@ from typing import Any, Dict, List, Sequence
 import numpy as np
 
 from analysis import plots, tables
+from analysis.criteria import HYPOTHESIS, describe_criteria, evaluate_hypothesis
 from analysis.diagnostics import SIDE_BIAS_THRESHOLD, side_bias
 from analysis.metrics import (
     AGGREGATE_METRICS,
+    NORMALIZED_RETURN,
     PAIR_SEPARATOR,
     aggregate_estimates,
     build_score_data,
@@ -22,6 +24,7 @@ from analysis.metrics import (
     improvement_estimates,
     iqm_curve_estimates,
     performance_profiles,
+    score_spread,
     task_label,
 )
 from evaluation.grid import RunJob, expand_jobs, is_complete, load_grid_spec
@@ -32,12 +35,19 @@ DEVELOPMENT_REPS = 2_000
 # Tables also written as LaTeX floats for the paper: name -> caption
 LATEX_CAPTIONS = {
     "aggregate_metrics": (
-        "Final success rate over training seeds: point estimate and 95% stratified "
-        "bootstrap confidence interval."
+        "Final success rate over training seeds: point estimate, 95% stratified "
+        "bootstrap confidence interval and standard deviation over runs."
     ),
     "probability_of_improvement": (
         "Probability that a run of the candidate beats a run of the baseline on the "
         "same task, with 95% bootstrap confidence interval."
+    ),
+    "aggregate_metrics_return": (
+        "Final return, min-max normalized per task over all runs: point estimate, "
+        "95% stratified bootstrap confidence interval and standard deviation."
+    ),
+    "hypothesis_criteria": (
+        "Hypothesis criteria per DTQN-kNN/DTQN pair (issue #1). " + describe_criteria()
     ),
     "side_bias_summary": (
         "Runs whose final evaluation ends in the same branch in more than 90% of "
@@ -139,6 +149,7 @@ def report_header(
         "evaluation episodes end in the same branch\n"
         f"- Code versions: {code}\n"
         f"- Devices: {list(devices)}\n"
+        f"- Hypothesis criteria: {describe_criteria()}\n"
     )
 
 
@@ -189,8 +200,20 @@ def main() -> None:
         figures_dir,
         "iqm_learning_curves",
     )
+    returns = build_score_data(records, NORMALIZED_RETURN).final_scores
+    return_aggregates = aggregate_estimates(returns, args.reps)
+    plots.save_figure(
+        plots.plot_aggregates(return_aggregates, metric_names, colors),
+        figures_dir,
+        "aggregate_metrics_return",
+    )
     named_rows = {
-        "aggregate_metrics": tables.aggregate_rows(aggregates, metric_names),
+        "aggregate_metrics": tables.aggregate_rows(
+            aggregates, metric_names, score_spread(final_scores)
+        ),
+        "aggregate_metrics_return": tables.aggregate_rows(
+            return_aggregates, metric_names, score_spread(returns)
+        ),
         "side_bias_summary": tables.side_bias_summary_rows(diagnostics),
         "side_bias": tables.side_bias_rows(diagnostics),
     }
@@ -204,6 +227,11 @@ def main() -> None:
         named_rows["probability_of_improvement"] = tables.improvement_rows(
             improvements, PAIR_SEPARATOR
         )
+        if tuple(HYPOTHESIS) in spec.comparisons:
+            verdicts = evaluate_hypothesis(
+                data.algorithms, data.tasks, aggregates, improvements, metric_names
+            )
+            named_rows["hypothesis_criteria"] = tables.criteria_rows(verdicts)
     header = report_header(args.reps, data.seeds, data.tasks, data.steps, code, devices)
     write_tables(args.output_dir / "summary", named_rows, header)
     logger.info(

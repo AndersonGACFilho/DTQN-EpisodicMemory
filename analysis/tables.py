@@ -4,6 +4,7 @@ import csv
 from pathlib import Path
 from typing import Any, Dict, List, Sequence, Tuple
 
+from analysis.criteria import Verdict
 from analysis.diagnostics import SideBias
 from analysis.metrics import Estimates
 
@@ -31,7 +32,10 @@ def _format(value: Any) -> Any:
     return round(float(value), DECIMALS) if isinstance(value, float) else value
 
 
-def aggregate_rows(estimates: Estimates, metric_names: Sequence[str]) -> List[Row]:
+def aggregate_rows(
+    estimates: Estimates, metric_names: Sequence[str], spreads: Dict[str, float]
+) -> List[Row]:
+    """Point estimates with CIs, plus the standard deviation over runs."""
     points, intervals = estimates
     rows = []
     for algorithm, values in points.items():
@@ -40,6 +44,7 @@ def aggregate_rows(estimates: Estimates, metric_names: Sequence[str]) -> List[Ro
             row[metric] = float(values[index])
             row[f"{metric} CI low"] = float(intervals[algorithm][0, index])
             row[f"{metric} CI high"] = float(intervals[algorithm][1, index])
+        row["Std"] = spreads[algorithm]
         rows.append(row)
     return rows
 
@@ -60,6 +65,23 @@ def improvement_rows(estimates: Estimates, separator: str) -> List[Row]:
             }
         )
     return rows
+
+
+def criteria_rows(verdicts: Sequence[Verdict]) -> List[Row]:
+    return [
+        {
+            "candidate": verdict.candidate,
+            "baseline": verdict.baseline,
+            "regime": verdict.regime,
+            "candidate IQM": verdict.candidate_iqm,
+            "baseline IQM": verdict.baseline_iqm,
+            IMPROVEMENT: verdict.improvement,
+            IMPROVEMENT + LOW_SUFFIX: verdict.improvement_low,
+            IMPROVEMENT + HIGH_SUFFIX: verdict.improvement_high,
+            "met": "yes" if verdict.met else "no",
+        }
+        for verdict in verdicts
+    ]
 
 
 def side_bias_summary_rows(diagnostics: Sequence[SideBias]) -> List[Row]:
