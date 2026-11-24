@@ -1,0 +1,17 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Hypothesis criteria for each DTQN-kNN/DTQN pair with the same context length and number of layers. Beyond the window: an IQM success rate of at least 0.9 and the 95\% CI of P(candidate > baseline) above 0.5. Within the window: that CI not entirely below 0.5 and an IQM at most 0.05 below the baseline (non-inferiority).}
+\label{tab:hypothesis-criteria}
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{%
+\begin{tabular}{lrrrrrr}
+\toprule
+candidate & baseline & regime & candidate IQM & baseline IQM & P(candidate > baseline) & met \\
+\midrule
+DTQN-kNN context=6 layers=2 & DTQN context=6 layers=2 & beyond window & 1.0 & 0.48 & 1.00 [1.00, 1.00] & yes \\
+DTQN-kNN context=6 layers=3 & DTQN context=6 layers=3 & beyond window & 1.0 & 0.48 & 0.94 [0.76, 1.00] & yes \\
+DTQN-kNN context=12 layers=2 & DTQN context=12 layers=2 & within window & 1.0 & 1.0 & 0.50 [0.50, 0.50] & yes \\
+DTQN-kNN context=12 layers=3 & DTQN context=12 layers=3 & within window & 1.0 & 1.0 & 0.50 [0.50, 0.50] & yes \\
+\bottomrule
+\end{tabular}}
+\end{table}

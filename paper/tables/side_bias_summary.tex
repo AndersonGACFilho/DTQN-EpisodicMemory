@@ -1,0 +1,25 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Runs whose final evaluation ends in the same branch in more than 90\% of episodes (fixed-side policies), and mean final success rate.}
+\label{tab:side-bias-summary}
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{%
+\begin{tabular}{lrrr}
+\toprule
+algorithm & task & fixed-side runs & mean success rate \\
+\midrule
+DQN context=1 layers=2 & env=PassiveTMaze-v0 corridor\_length=10 & 5/5 & 0.46 \\
+DRQN context=6 layers=2 & env=PassiveTMaze-v0 corridor\_length=10 & 5/5 & 0.472 \\
+DRQN context=12 layers=2 & env=PassiveTMaze-v0 corridor\_length=10 & 0/5 & 1.0 \\
+DRQN context=18 layers=2 & env=PassiveTMaze-v0 corridor\_length=10 & 0/5 & 1.0 \\
+DTQN context=6 layers=2 & env=PassiveTMaze-v0 corridor\_length=10 & 5/5 & 0.472 \\
+DTQN context=6 layers=3 & env=PassiveTMaze-v0 corridor\_length=10 & 5/5 & 0.472 \\
+DTQN context=12 layers=2 & env=PassiveTMaze-v0 corridor\_length=10 & 0/5 & 1.0 \\
+DTQN context=12 layers=3 & env=PassiveTMaze-v0 corridor\_length=10 & 0/5 & 1.0 \\
+DTQN-kNN context=6 layers=2 & env=PassiveTMaze-v0 corridor\_length=10 & 0/5 & 1.0 \\
+DTQN-kNN context=6 layers=3 & env=PassiveTMaze-v0 corridor\_length=10 & 0/5 & 0.902 \\
+DTQN-kNN context=12 layers=2 & env=PassiveTMaze-v0 corridor\_length=10 & 0/5 & 1.0 \\
+DTQN-kNN context=12 layers=3 & env=PassiveTMaze-v0 corridor\_length=10 & 0/5 & 1.0 \\
+\bottomrule
+\end{tabular}}
+\end{table}

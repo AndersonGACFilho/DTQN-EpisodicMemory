@@ -2,4 +2,69 @@
 \label{sec:results}
 % TODO: Success vs. corridor length beyond the context window,
 % ablations (memory layer, top-k, gate, stop-grad), compute cost.
-% refs: \cite{esslinger2022dtqn,wu2022memorizing}
+% TODO: interpret the tables and figures below.
+% refs: \cite{esslinger2022dtqn,wu2022memorizing,agarwal2021rliable}
+
+All agents are trained on the Passive T-Maze with corridor length 10, so the cue
+is 11 observations before the decision, for 32\,000 training steps after 50\,000
+prefill steps, with five training seeds per configuration. DTQN and DTQN-kNN use
+contexts of 6 (beyond the window) and 12 (within it) with 2 or 3 transformer
+layers; DRQN uses training sequences of 6, 12 and 18 steps; memoryless DQN is a
+lower bound. Each run is evaluated greedily on 100 episodes every 2\,000 training
+steps; the evaluation seed is $10\,000$ plus the training seed, so runs do not
+share evaluation episodes. Scores are final success rates and final returns
+min-max normalized per task, aggregated over seeds with stratified bootstrap
+confidence intervals (50\,000 replications) \cite{agarwal2021rliable}. All 60
+runs used the same source code on one GPU.
+
+Table~\ref{tab:hypothesis-criteria} applies the criteria of
+Section~\ref{sec:experimental-setup}. For DTQN-kNN with context 6 and 3 layers,
+the IQM point estimate meets the target while the lower bound of its 95\%
+confidence interval is 0.67 (Table~\ref{tab:aggregate-metrics}): one of the five
+seeds reached 51\% success without a fixed-side policy.
+
+\input{tables/hypothesis_criteria}
+\input{tables/aggregate_metrics}
+\input{tables/probability_of_improvement}
+\input{tables/aggregate_metrics_return}
+\input{tables/side_bias_summary}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{aggregate_metrics}
+  \caption{Mean, interquartile mean (IQM), median and optimality gap of the final
+    success rate, with 95\% stratified bootstrap confidence intervals.}
+  \label{fig:aggregate-metrics}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{aggregate_metrics_return}
+  \caption{Aggregate metrics of the final return, min-max normalized per task over
+    all runs, with 95\% stratified bootstrap confidence intervals.}
+  \label{fig:aggregate-metrics-return}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{iqm_learning_curves}
+  \caption{IQM success rate during training, with 95\% stratified bootstrap
+    confidence bands.}
+  \label{fig:iqm-learning-curves}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=\linewidth]{performance_profiles}
+  \caption{Performance profiles: fraction of runs whose final success rate exceeds
+    each threshold $\tau$, with 95\% confidence bands.}
+  \label{fig:performance-profiles}
+\end{figure}
+
+\begin{figure}[t]
+  \centering
+  \includegraphics[width=0.8\linewidth]{probability_of_improvement}
+  \caption{Probability of improvement of each candidate over its baseline with the
+    same context length and number of layers, with 95\% confidence intervals.}
+  \label{fig:probability-of-improvement}
+\end{figure}
