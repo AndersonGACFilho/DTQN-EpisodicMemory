@@ -4,7 +4,6 @@ Register a new execution mode by adding its executor factory to EXECUTORS.
 """
 
 import logging
-import os
 from concurrent.futures import ProcessPoolExecutor, as_completed
 from dataclasses import asdict, dataclass
 from functools import partial
@@ -12,10 +11,9 @@ from multiprocessing import get_context
 from pathlib import Path
 from typing import Callable, Dict, Iterator, List, Optional, Protocol, Sequence, Tuple
 
-import torch
-
 from evaluation.grid import RunJob
 from evaluation.job import run_job
+from utils.random import RUN_THREADS
 
 SEQUENTIAL = "sequential"
 PARALLEL = "parallel"
@@ -27,23 +25,14 @@ Outcome = Tuple[RunJob, Optional[BaseException]]
 logger = logging.getLogger(__name__)
 
 
-def threads_per_worker(workers: int) -> int:
-    """Split the CPU cores so parallel workers do not oversubscribe them."""
-    return max(1, (os.cpu_count() or 1) // workers)
-
-
 @dataclass(frozen=True)
 class ExecutionPlan:
     device: str
     workers: int
     mode: str
 
-    @property
-    def threads(self) -> int:
-        return threads_per_worker(self.workers)
-
     def to_dict(self) -> Dict[str, object]:
-        return {**asdict(self), "threads_per_worker": self.threads}
+        return {**asdict(self), "threads_per_run": RUN_THREADS}
 
 
 class Executor(Protocol):
@@ -53,11 +42,7 @@ class Executor(Protocol):
 class InProcessExecutor:
     """Runs jobs one after another in this process."""
 
-    def __init__(self, threads: int) -> None:
-        self.threads = threads
-
     def outcomes(self, task: Task, jobs: Sequence[RunJob]) -> Iterator[Outcome]:
-        torch.set_num_threads(self.threads)
         for job in jobs:
             try:
                 task(job)
@@ -66,8 +51,7 @@ class InProcessExecutor:
                 yield job, error
 
 
-def _initialize_worker(threads: int) -> None:
-    torch.set_num_threads(threads)
+def _initialize_worker() -> None:
     logging.basicConfig(level=logging.INFO, format=LOG_FORMAT)
 
 
@@ -78,16 +62,14 @@ class ProcessExecutor:
     same GPU fail to initialize theirs ("CUDA error: out of memory").
     """
 
-    def __init__(self, workers: int, threads: int) -> None:
+    def __init__(self, workers: int) -> None:
         self.workers = workers
-        self.threads = threads
 
     def outcomes(self, task: Task, jobs: Sequence[RunJob]) -> Iterator[Outcome]:
         with ProcessPoolExecutor(
             max_workers=self.workers,
             mp_context=get_context("spawn"),
             initializer=_initialize_worker,
-            initargs=(self.threads,),
         ) as pool:
             futures = {pool.submit(task, job): job for job in jobs}
             for future in as_completed(futures):
@@ -95,8 +77,8 @@ class ProcessExecutor:
 
 
 EXECUTORS: Dict[str, Callable[[ExecutionPlan], Executor]] = {
-    SEQUENTIAL: lambda plan: InProcessExecutor(plan.threads),
-    PARALLEL: lambda plan: ProcessExecutor(plan.workers, plan.threads),
+    SEQUENTIAL: lambda plan: InProcessExecutor(),
+    PARALLEL: lambda plan: ProcessExecutor(plan.workers),
 }
 
 

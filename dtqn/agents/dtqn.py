@@ -10,6 +10,7 @@ from dtqn.agents.drqn import DqnAgent
 from utils.bag import Bag
 from utils.context import Context
 from utils.random import RNG
+from utils.torch_utils import select_action_values
 
 
 class DtqnAgent(DqnAgent):
@@ -232,7 +233,7 @@ class DtqnAgent(DqnAgent):
 
         # After gathering, Q values becomes [batch-size x hist-len x 1] then
         # after squeeze becomes [batch-size x hist-len]
-        q_values = q_values.gather(2, actions).squeeze()
+        q_values = select_action_values(q_values, actions).squeeze()
 
         with torch.no_grad():
             # Next obss goes from [batch-size x hist-len x obs-dim] to

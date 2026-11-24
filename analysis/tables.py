@@ -2,13 +2,29 @@
 
 import csv
 from pathlib import Path
-from typing import Any, Dict, List, Sequence
+from typing import Any, Dict, List, Sequence, Tuple
 
 from analysis.diagnostics import SideBias
 from analysis.metrics import Estimates
 
 Row = Dict[str, Any]
 DECIMALS = 3
+INTERVAL_DECIMALS = 2
+LOW_SUFFIX = " CI low"
+HIGH_SUFFIX = " CI high"
+IMPROVEMENT = "P(candidate > baseline)"
+LATEX_ESCAPES = {
+    "\\": r"\textbackslash{}",
+    "&": r"\&",
+    "%": r"\%",
+    "$": r"\$",
+    "#": r"\#",
+    "_": r"\_",
+    "{": r"\{",
+    "}": r"\}",
+    "~": r"\textasciitilde{}",
+    "^": r"\textasciicircum{}",
+}
 
 
 def _format(value: Any) -> Any:
@@ -38,12 +54,28 @@ def improvement_rows(estimates: Estimates, separator: str) -> List[Row]:
             {
                 "candidate": candidate,
                 "baseline": baseline,
-                "P(candidate > baseline)": float(probability),
-                "CI low": float(lower),
-                "CI high": float(upper),
+                IMPROVEMENT: float(probability),
+                IMPROVEMENT + LOW_SUFFIX: float(lower),
+                IMPROVEMENT + HIGH_SUFFIX: float(upper),
             }
         )
     return rows
+
+
+def side_bias_summary_rows(diagnostics: Sequence[SideBias]) -> List[Row]:
+    """Fixed-side runs per algorithm and task, for a compact table."""
+    groups: Dict[Tuple[str, str], List[SideBias]] = {}
+    for result in diagnostics:
+        groups.setdefault((result.algorithm, result.task), []).append(result)
+    return [
+        {
+            "algorithm": algorithm,
+            "task": task,
+            "fixed-side runs": f"{sum(r.flagged for r in results)}/{len(results)}",
+            "mean success rate": sum(r.success_rate for r in results) / len(results),
+        }
+        for (algorithm, task), results in groups.items()
+    ]
 
 
 def side_bias_rows(diagnostics: Sequence[SideBias]) -> List[Row]:
@@ -83,5 +115,57 @@ def markdown_table(rows: Sequence[Row]) -> str:
             "| " + " | ".join(str(_format(row[column])) for column in columns) + " |"
             for row in rows
         ),
+    ]
+    return "\n".join(lines) + "\n"
+
+
+def with_intervals(rows: Sequence[Row]) -> List[Row]:
+    """Merge 'X', 'X CI low' and 'X CI high' columns into one 'X [low, high]' column."""
+    merged = []
+    for row in rows:
+        new_row: Row = {}
+        for column, value in row.items():
+            if column.endswith((LOW_SUFFIX, HIGH_SUFFIX)):
+                continue
+            low, high = row.get(column + LOW_SUFFIX), row.get(column + HIGH_SUFFIX)
+            if low is None or high is None:
+                new_row[column] = value
+            else:
+                digits = INTERVAL_DECIMALS
+                new_row[column] = (
+                    f"{value:.{digits}f} [{low:.{digits}f}, {high:.{digits}f}]"
+                )
+        merged.append(new_row)
+    return merged
+
+
+def _latex_text(value: Any) -> str:
+    text = str(_format(value))
+    return "".join(LATEX_ESCAPES.get(character, character) for character in text)
+
+
+def latex_table(rows: Sequence[Row], caption: str, label: str) -> str:
+    """A booktabs table float; the first column is left-aligned, the rest right."""
+    if not rows:
+        raise ValueError("No rows for the LaTeX table")
+    columns = list(rows[0])
+    alignment = "l" + "r" * (len(columns) - 1)
+    lines = [
+        r"\begin{table}[t]",
+        r"\centering",
+        r"\small",
+        rf"\caption{{{_latex_text(caption)}}}",
+        rf"\label{{{label}}}",
+        rf"\begin{{tabular}}{{{alignment}}}",
+        r"\toprule",
+        " & ".join(_latex_text(column) for column in columns) + r" \\",
+        r"\midrule",
+        *(
+            " & ".join(_latex_text(row[column]) for column in columns) + r" \\"
+            for row in rows
+        ),
+        r"\bottomrule",
+        r"\end{tabular}",
+        r"\end{table}",
     ]
     return "\n".join(lines) + "\n"

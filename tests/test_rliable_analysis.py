@@ -17,6 +17,7 @@ from analysis.metrics import (
     improvement_estimates,
 )
 from analysis.rliable_report import MissingRunsError, load_grid_records
+from analysis.tables import latex_table, side_bias_summary_rows, with_intervals
 from evaluation.grid import expand_jobs, load_grid_spec
 from evaluation.records import EpisodeRecord
 from evaluation.sides import DOWN
@@ -105,6 +106,31 @@ class MissingRunsTests(unittest.TestCase):
             jobs = expand_jobs(load_grid_spec(grid_file(raw_dir)))
             with self.assertRaisesRegex(MissingRunsError, jobs[0].run_id):
                 load_grid_records(jobs, raw_dir)
+
+
+class LatexTableTests(unittest.TestCase):
+    def test_intervals_merge_into_one_column(self) -> None:
+        rows = [
+            {"algorithm": "DTQN", "IQM": 0.625, "IQM CI low": 0.5, "IQM CI high": 0.75}
+        ]
+        self.assertEqual(
+            with_intervals(rows), [{"algorithm": "DTQN", "IQM": "0.62 [0.50, 0.75]"}]
+        )
+
+    def test_latex_table_escapes_text_and_uses_booktabs(self) -> None:
+        latex = latex_table(
+            [{"task": "corridor_length=10", "share": "50%"}], "A & B", "tab:x"
+        )
+        self.assertIn(r"corridor\_length=10 & 50\% \\", latex)
+        self.assertIn(r"\caption{A \& B}", latex)
+        self.assertIn(r"\toprule", latex)
+        self.assertIn(r"\begin{tabular}{lr}", latex)
+
+    def test_side_bias_summary_counts_fixed_side_runs(self) -> None:
+        records = evaluate_fixed_policy(AlwaysDownPolicy(10), corridor_length=10)
+        (row,) = side_bias_summary_rows(side_bias(records))
+        self.assertEqual(row["fixed-side runs"], "1/1")
+        self.assertAlmostEqual(row["mean success rate"], 0.62)
 
 
 if __name__ == "__main__":

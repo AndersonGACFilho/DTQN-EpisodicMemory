@@ -75,12 +75,11 @@ def main() -> int:
         return 0
     plan = route(pending, args.device, args.workers)
     logger.info(
-        "Running %d jobs on %s, %s with %d worker(s) and %d thread(s) each",
+        "Running %d jobs on %s, %s with %d worker(s)",
         len(pending),
         plan.device,
         plan.mode,
         plan.workers,
-        plan.threads,
     )
     failed = run_plan(pending, args.raw_dir, args.artifacts_dir, plan)
     if failed:

@@ -3,6 +3,7 @@
 import tempfile
 import unittest
 from pathlib import Path
+from typing import Any, Dict, List
 
 import torch
 
@@ -88,6 +89,52 @@ class GridSelectionTests(unittest.TestCase):
             self.assertFalse(is_complete(job, raw_dir))
             metadata_path(raw_dir, job.run_id).write_text("{}")
             self.assertTrue(is_complete(job, raw_dir))
+
+
+class ParameterGroupTests(unittest.TestCase):
+    def groups(self) -> List[Dict[str, Any]]:
+        shared = {"env": ["PassiveTMaze-v0"], "corridor_length": [3], "num_steps": [7]}
+        return [
+            {"model": ["DTQN", "DTQN-kNN"], "context": [2, 4], **shared},
+            {"model": ["DRQN"], "context": [2], **shared},
+            {"model": ["DQN"], "context": [1], **shared},
+        ]
+
+    def test_grid_is_the_union_of_group_products(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = grid_file(Path(directory), parameters=self.groups(), train_seeds=2)
+            spec = load_grid_spec(path)
+            jobs = expand_jobs(spec)
+        self.assertEqual(spec.models, ["DTQN", "DTQN-kNN", "DRQN", "DQN"])
+        self.assertEqual(len(jobs), (4 + 1 + 1) * 2)
+        self.assertEqual(
+            {job.config.context for job in jobs if job.config.model == "DQN"}, {1}
+        )
+
+    def test_comparisons_may_use_models_from_any_group(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            path = grid_file(
+                Path(directory),
+                parameters=self.groups(),
+                comparisons=[["DTQN-kNN", "DRQN"]],
+            )
+            self.assertEqual(load_grid_spec(path).comparisons, [("DTQN-kNN", "DRQN")])
+
+    def test_overlapping_groups_are_rejected(self) -> None:
+        groups = self.groups()
+        groups.append(dict(groups[1]))
+        with tempfile.TemporaryDirectory() as directory:
+            path = grid_file(Path(directory), parameters=groups)
+            with self.assertRaisesRegex(ValueError, "overlap"):
+                expand_jobs(load_grid_spec(path))
+
+    def test_protocol_keys_are_rejected_in_any_group(self) -> None:
+        groups = self.groups()
+        groups[2]["training_seed"] = [1]
+        with tempfile.TemporaryDirectory() as directory:
+            path = grid_file(Path(directory), parameters=groups)
+            with self.assertRaisesRegex(ValueError, "training_seed"):
+                load_grid_spec(path)
 
 
 class RecordTests(unittest.TestCase):
