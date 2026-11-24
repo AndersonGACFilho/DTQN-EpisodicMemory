@@ -19,6 +19,7 @@ from analysis.metrics import PAIR_SEPARATOR, Estimates, Scores  # noqa: E402
 PALETTE = "tab20"
 FIGURE_FORMATS = ("png", "pdf")
 SCORE_LABEL = "Success rate"
+RETURN_LABEL = "Normalized return"
 COLUMN_WIDTH = 7.0
 ROW_HEIGHT = 0.45
 
@@ -39,7 +40,10 @@ def save_figure(figure: Figure, directory: Path, name: str) -> List[Path]:
 
 
 def plot_aggregates(
-    estimates: Estimates, metric_names: Sequence[str], colors: Colors
+    estimates: Estimates,
+    metric_names: Sequence[str],
+    colors: Colors,
+    score_label: str = SCORE_LABEL,
 ) -> Figure:
     points, intervals = estimates
     # rliable places a shared x label at a fixed height that overlaps short figures
@@ -52,7 +56,7 @@ def plot_aggregates(
         xlabel="",
     )
     for axis in np.atleast_1d(axes):
-        axis.set_xlabel(SCORE_LABEL, fontsize="large")
+        axis.set_xlabel(score_label, fontsize="large")
     return figure
 
 

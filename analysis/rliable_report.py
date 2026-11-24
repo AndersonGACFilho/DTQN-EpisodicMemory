@@ -47,7 +47,8 @@ LATEX_CAPTIONS = {
         "95% stratified bootstrap confidence interval and standard deviation."
     ),
     "hypothesis_criteria": (
-        "Hypothesis criteria per DTQN-kNN/DTQN pair (issue #1). " + describe_criteria()
+        "Hypothesis criteria for each DTQN-kNN/DTQN pair with the same context "
+        "length and number of layers. " + describe_criteria()
     ),
     "side_bias_summary": (
         "Runs whose final evaluation ends in the same branch in more than 90% of "
@@ -203,7 +204,9 @@ def main() -> None:
     returns = build_score_data(records, NORMALIZED_RETURN).final_scores
     return_aggregates = aggregate_estimates(returns, args.reps)
     plots.save_figure(
-        plots.plot_aggregates(return_aggregates, metric_names, colors),
+        plots.plot_aggregates(
+            return_aggregates, metric_names, colors, plots.RETURN_LABEL
+        ),
         figures_dir,
         "aggregate_metrics_return",
     )

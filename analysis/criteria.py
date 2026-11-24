@@ -58,10 +58,10 @@ class Verdict:
 
 def describe_criteria() -> str:
     return (
-        f"Beyond the window: IQM success >= {SUCCESS_TARGET} and the 95% CI of "
-        f"P(candidate > baseline) above {NO_DIFFERENCE}. Within the window: that CI "
-        f"not below {NO_DIFFERENCE} and IQM at most {NON_INFERIORITY_MARGIN} below "
-        "the baseline (non-inferiority)."
+        f"Beyond the window: an IQM success rate of at least {SUCCESS_TARGET} and the "
+        f"95% CI of P(candidate > baseline) above {NO_DIFFERENCE}. Within the window: "
+        f"that CI not entirely below {NO_DIFFERENCE} and an IQM at most "
+        f"{NON_INFERIORITY_MARGIN} below the baseline (non-inferiority)."
     )
 
 

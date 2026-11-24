@@ -167,7 +167,10 @@ def _latex_text(value: Any) -> str:
 
 
 def latex_table(rows: Sequence[Row], caption: str, label: str) -> str:
-    """A booktabs table float; the first column is left-aligned, the rest right."""
+    """A booktabs table float, scaled down to the line width when wider.
+
+    The first column is left-aligned and the rest right-aligned.
+    """
     if not rows:
         raise ValueError("No rows for the LaTeX table")
     columns = list(rows[0])
@@ -178,6 +181,8 @@ def latex_table(rows: Sequence[Row], caption: str, label: str) -> str:
         r"\small",
         rf"\caption{{{_latex_text(caption)}}}",
         rf"\label{{{label}}}",
+        # Shrink to the line width only when the table is wider (graphicx)
+        r"\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{%",
         rf"\begin{{tabular}}{{{alignment}}}",
         r"\toprule",
         " & ".join(_latex_text(column) for column in columns) + r" \\",
@@ -187,7 +192,7 @@ def latex_table(rows: Sequence[Row], caption: str, label: str) -> str:
             for row in rows
         ),
         r"\bottomrule",
-        r"\end{tabular}",
+        r"\end{tabular}}",
         r"\end{table}",
     ]
     return "\n".join(lines) + "\n"
