@@ -208,6 +208,37 @@ class KnnIntegrationTests(unittest.TestCase):
                             )
                         )
 
+    def test_right_padding_does_not_change_prefix_keys_and_values(self) -> None:
+        for identity in (False, True):
+            for a_embed in (0, 4):
+                with self.subTest(identity=identity, a_embed=a_embed):
+                    agent = make_agent(identity=identity, a_embed=a_embed)
+                    network = cast(DTQNKNN, agent.policy_network)
+                    length = agent.context_len
+                    obss = torch.randn(3, length, 2)
+                    actions = torch.randint(4, (3, length, 1))
+                    # Window w keeps its first w + 2 tokens; the rest is zero padding
+                    real = [2, 3, length]
+                    padded_obss, padded_actions = obss.clone(), actions.clone()
+                    for row, size in enumerate(real):
+                        padded_obss[row, size:] = 0
+                        padded_actions[row, size:] = 0
+                    keys, values = network.kv_at(
+                        padded_obss,
+                        padded_actions,
+                        torch.tensor([size - 1 for size in real]),
+                    )
+                    for row, size in enumerate(real):
+                        expected = network.newest_kv(
+                            obss[row : row + 1, :size], actions[row : row + 1, :size]
+                        )
+                        self.assertTrue(
+                            torch.allclose(keys[row], expected[0][0], atol=1e-6)
+                        )
+                        self.assertTrue(
+                            torch.allclose(values[row], expected[1][0], atol=1e-6)
+                        )
+
     def test_prefix_cannot_read_sampled_window_future_or_another_episode(self) -> None:
         agent = make_agent()
         network = cast(DTQNKNN, agent.policy_network)
