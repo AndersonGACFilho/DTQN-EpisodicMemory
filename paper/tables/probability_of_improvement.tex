@@ -1,0 +1,21 @@
+\begin{table}[t]
+\centering
+\small
+\caption{Probability that a run of the candidate beats a run of the baseline on the same task, with 95\% bootstrap confidence interval.}
+\label{tab:probability-of-improvement}
+\resizebox{\ifdim\width>\linewidth\linewidth\else\width\fi}{!}{%
+\begin{tabular}{lrr}
+\toprule
+candidate & baseline & P(candidate > baseline) \\
+\midrule
+DTQN-kNN context=6 layers=2 & DTQN context=6 layers=2 & 1.00 [1.00, 1.00] \\
+DTQN-kNN context=6 layers=3 & DTQN context=6 layers=3 & 0.94 [0.76, 1.00] \\
+DTQN-kNN context=12 layers=2 & DTQN context=12 layers=2 & 0.50 [0.50, 0.50] \\
+DTQN-kNN context=12 layers=3 & DTQN context=12 layers=3 & 0.50 [0.50, 0.50] \\
+DTQN-kNN context=6 layers=2 & DRQN context=6 layers=2 & 1.00 [1.00, 1.00] \\
+DTQN-kNN context=12 layers=2 & DRQN context=12 layers=2 & 0.50 [0.50, 0.50] \\
+DTQN context=6 layers=2 & DRQN context=6 layers=2 & 0.50 [0.14, 0.86] \\
+DTQN context=12 layers=2 & DRQN context=12 layers=2 & 0.50 [0.50, 0.50] \\
+\bottomrule
+\end{tabular}}
+\end{table}

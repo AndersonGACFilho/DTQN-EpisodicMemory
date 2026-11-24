@@ -125,6 +125,8 @@ class LatexTableTests(unittest.TestCase):
         self.assertIn(r"\caption{A \& B}", latex)
         self.assertIn(r"\toprule", latex)
         self.assertIn(r"\begin{tabular}{lr}", latex)
+        self.assertIn(r"\resizebox{\ifdim\width>\linewidth", latex)
+        self.assertIn(r"\end{tabular}}", latex)
 
     def test_side_bias_summary_counts_fixed_side_runs(self) -> None:
         records = evaluate_fixed_policy(AlwaysDownPolicy(10), corridor_length=10)

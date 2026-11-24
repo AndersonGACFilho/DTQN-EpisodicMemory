@@ -340,7 +340,7 @@ which the protocol derives. Check that its hyperparameters match the runs you
 want to reproduce before launching it.
 
 ```bash
-# List the 80 jobs and their status: 60 DTQN/DTQN-kNN (2 models x 3 contexts x
+# List the 60 jobs and their status: 40 DTQN/DTQN-kNN (2 models x 2 contexts x
 # 2 layers x 5 seeds), 15 DRQN (3 contexts x 5 seeds) and 5 DQN
 python run_rliable_grid.py --grid experiments/rliable_tmaze.json --dry-run
 

@@ -7,20 +7,21 @@ are in the [README](../README.md#multi-seed-evaluation-with-rliable).
 
 ## Modules
 
-| Module | Responsibility |
-|---|---|
-| [`evaluation/grid.py`](../evaluation/grid.py) | Reads the grid JSON, expands (configuration, training seed) jobs, derives `eval_seed = 10000 + train_seed`, filters jobs and checks which are complete |
-| [`evaluation/router.py`](../evaluation/router.py) | Decides the execution plan: device (`--device auto` picks CUDA when available), worker count (`--workers auto` calibrates) and mode (one worker is sequential, more are parallel). It never creates CUDA tensors |
-| [`evaluation/execution.py`](../evaluation/execution.py) | `ExecutionPlan`, the executors behind one interface (in-process for sequential, spawned processes for parallel), the `EXECUTORS` registry and the single failure-handling loop |
-| [`evaluation/calibration.py`](../evaluation/calibration.py) | `--workers auto`: times short probe runs with 1, 2, 4 and 8 workers in worker processes and picks the fastest count that still pays off |
-| [`evaluation/job.py`](../evaluation/job.py) | Runs one job: `train_run` with a step hook that evaluates periodically, then writes the records and metadata |
-| [`evaluation/runner.py`](../evaluation/runner.py) | Runs greedy episodes against any policy with `reset`/`act`/`observe`; knows nothing about training |
-| [`evaluation/sides.py`](../evaluation/sides.py) | Registry of junction-side readers per environment |
-| [`evaluation/records.py`](../evaluation/records.py) | `EpisodeRecord` and the tidy CSV format |
-| [`analysis/metrics.py`](../analysis/metrics.py) | `(n_seeds, n_tasks)` score matrices and rliable interval estimates |
-| [`analysis/diagnostics.py`](../analysis/diagnostics.py) | Fixed-side policy detection |
-| [`analysis/plots.py`](../analysis/plots.py), [`analysis/tables.py`](../analysis/tables.py) | Figures and CSV/Markdown tables from precomputed estimates |
-| [`analysis/rliable_report.py`](../analysis/rliable_report.py) | Orchestrates the report |
+| Module                                                                                     | Responsibility                                                                                                                                                                                                   |
+|--------------------------------------------------------------------------------------------|------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| [`evaluation/grid.py`](../evaluation/grid.py)                                              | Reads the grid JSON, expands (configuration, training seed) jobs, derives `eval_seed = 10000 + train_seed`, filters jobs and checks which are complete                                                           |
+| [`evaluation/router.py`](../evaluation/router.py)                                          | Decides the execution plan: device (`--device auto` picks CUDA when available), worker count (`--workers auto` calibrates) and mode (one worker is sequential, more are parallel). It never creates CUDA tensors |
+| [`evaluation/execution.py`](../evaluation/execution.py)                                    | `ExecutionPlan`, the executors behind one interface (in-process for sequential, spawned processes for parallel), the `EXECUTORS` registry and the single failure-handling loop                                   |
+| [`evaluation/calibration.py`](../evaluation/calibration.py)                                | `--workers auto`: times short probe runs with 1, 2, 4 and 8 workers in worker processes and picks the fastest count that still pays off                                                                          |
+| [`evaluation/job.py`](../evaluation/job.py)                                                | Runs one job: `train_run` with a step hook that evaluates periodically, then writes the records and metadata                                                                                                     |
+| [`evaluation/runner.py`](../evaluation/runner.py)                                          | Runs greedy episodes against any policy with `reset`/`act`/`observe`; knows nothing about training                                                                                                               |
+| [`evaluation/sides.py`](../evaluation/sides.py)                                            | Registry of junction-side readers per environment                                                                                                                                                                |
+| [`evaluation/records.py`](../evaluation/records.py)                                        | `EpisodeRecord` and the tidy CSV format                                                                                                                                                                          |
+| [`analysis/metrics.py`](../analysis/metrics.py)                                            | `(n_seeds, n_tasks)` score matrices for any per-episode score (`SCORE_KINDS`: success rate, return min-max normalized per task), rliable interval estimates and the std over runs                                |
+| [`analysis/diagnostics.py`](../analysis/diagnostics.py)                                    | Fixed-side policy detection                                                                                                                                                                                      |
+| [`analysis/criteria.py`](../analysis/criteria.py)                                          | Hypothesis criteria (issue #1): classifies each DTQN-kNN/DTQN pair as beyond or within the context window and checks the IQM target, the probability of improvement and the non-inferiority margin               |
+| [`analysis/plots.py`](../analysis/plots.py), [`analysis/tables.py`](../analysis/tables.py) | Figures and CSV, Markdown and LaTeX tables from precomputed estimates                                                                                                                                            |
+| [`analysis/rliable_report.py`](../analysis/rliable_report.py)                              | Orchestrates the report                                                                                                                                                                                          |
 
 The parent process must not open a CUDA context before parallel workers start:
 on the tested driver, workers on the same GPU then fail with
@@ -81,23 +82,26 @@ flowchart TB
 
     subgraph ANALYSIS["6. Analysis: analysis.rliable_report"]
         LOAD["load grid records<br/>error if a run is missing"]
-        MATRIX["score matrices<br/>(n_seeds, n_tasks)"]
-        AGG["mean, IQM, median,<br/>optimality gap + 95% CI"]
+        MATRIX["score matrices<br/>(n_seeds, n_tasks)<br/>success rate, normalized return"]
+        AGG["mean, IQM, median,<br/>optimality gap + 95% CI, std"]
         POI["P(DTQN-kNN > DTQN)"]
         PROF["performance profiles"]
         CURVE["IQM learning curves"]
         BIAS["side bias<br/>flag above 90%"]
+        CRIT["hypothesis criteria<br/>(issue #1)"]
         LOAD --> MATRIX
         MATRIX --> AGG
         MATRIX --> POI
         MATRIX --> PROF
         MATRIX --> CURVE
         LOAD --> BIAS
+        AGG --> CRIT
+        POI --> CRIT
     end
 
     subgraph OUTPUT["7. Outputs"]
         FIGS[/"results/figures<br/>PNG and PDF"/]
-        TABLES[/"results/summary<br/>CSV and summary.md"/]
+        TABLES[/"results/summary<br/>CSV, summary.md and LaTeX"/]
     end
 
     JOBS --> FILTER
@@ -115,6 +119,7 @@ flowchart TB
     AGG --> TABLES
     POI --> TABLES
     BIAS --> TABLES
+    CRIT --> TABLES
 ```
 
 ## Sequence
@@ -177,6 +182,7 @@ sequenceDiagram
     Report->>Metrics: build score matrices
     Metrics-->>Report: aggregates, P(improvement), profiles, curves
     Report->>Report: side bias diagnostic
+    Report->>Report: hypothesis criteria per DTQN-kNN/DTQN pair
     Report->>Out: figures and tables
     Out-->>User: results/figures, results/summary
 ```
