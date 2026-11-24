@@ -94,15 +94,36 @@ class DTQNKNN(DTQN):
         memory.reset(batch_size)
         return memory
 
+    def _memory_layer_kv(
+        self, obss: torch.Tensor, actions: Optional[torch.Tensor] = None
+    ) -> KV:
+        """Keys and values of every position, before the memory layer's read."""
+        x = self.embed_context(obss, actions)
+        for index in range(self.memory_layer):
+            x = self.transformer_layers[index](x)
+        return self.knn_block.project(x)
+
     def newest_kv(
         self, obss: torch.Tensor, actions: Optional[torch.Tensor] = None
     ) -> KV:
         """Prefix reconstruction stops before the chosen layer's attention read."""
-        x = self.embed_context(obss, actions)
-        for index in range(self.memory_layer):
-            x = self.transformer_layers[index](x)
-        keys, values = self.knn_block.project(x)
+        keys, values = self._memory_layer_kv(obss, actions)
         return keys[:, -1], values[:, -1]
+
+    def kv_at(
+        self,
+        obss: torch.Tensor,
+        actions: Optional[torch.Tensor],
+        positions: torch.Tensor,
+    ) -> KV:
+        """Keys and values at one position per window.
+
+        Every layer below the memory read is causal or per token, so tokens after
+        `positions` (such as right padding) do not change the result.
+        """
+        keys, values = self._memory_layer_kv(obss, actions)
+        rows = torch.arange(keys.shape[0], device=keys.device)
+        return keys[rows, positions], values[rows, positions]
 
     def forward_with_memory(
         self,

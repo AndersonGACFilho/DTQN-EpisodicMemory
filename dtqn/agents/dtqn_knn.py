@@ -121,6 +121,28 @@ class KnnDtqnAgent(DtqnAgent):
         self.sample_episode_indices, self.sample_starts = sample[7:]
         return sample[:7]
 
+    def _padded_windows(
+        self, windows: List[Tuple[int, int, int, int]]
+    ) -> Tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        """Replay windows right-padded with zeros to the longest, and each last index."""
+        length = max(hi - lo for _, _, lo, hi in windows)
+        buffer = self.replay_buffer
+        obss = np.zeros(
+            (len(windows), length, *buffer.obss.shape[2:]), buffer.obss.dtype
+        )
+        actions = np.zeros(
+            (len(windows), length, *buffer.actions.shape[2:]), buffer.actions.dtype
+        )
+        for row, (_, episode, lo, hi) in enumerate(windows):
+            obss[row, : hi - lo] = buffer.obss[episode, lo:hi]
+            actions[row, : hi - lo] = buffer.actions[episode, lo:hi]
+        last = [hi - lo - 1 for _, _, lo, hi in windows]
+        return (
+            torch.as_tensor(obss, dtype=self.obs_tensor_type, device=self.device),
+            torch.as_tensor(actions, dtype=torch.long, device=self.device),
+            torch.as_tensor(last, dtype=torch.long, device=self.device),
+        )
+
     def replay_memory(
         self, network: DTQNKNN, episodes: NDArray[Any], starts: NDArray[Any]
     ) -> KNNMemory:
@@ -131,14 +153,17 @@ class KnnDtqnAgent(DtqnAgent):
         """
         memory = network.new_memory(len(episodes))
         capacity = self.memory_config.size
-        # Group equally sized windows to avoid padding changing token positions
-        # or the previous-action convention. Most windows have context_len tokens.
-        groups: Dict[int, List[Tuple[int, int, int, int]]] = {}
+        # Windows longer than one token share one right-padded pass: positions start
+        # at 0 and every layer below the memory read is causal, so padding after a
+        # window's last token leaves its keys and values unchanged. One-token windows
+        # keep their own pass, since the previous-action shift only applies to
+        # windows longer than one token.
+        groups: Dict[bool, List[Tuple[int, int, int, int]]] = {}
         for batch, (episode, start) in enumerate(zip(episodes, starts)):
             begin = max(0, int(start) - capacity)
             for slot, step in enumerate(range(begin, int(start))):
                 lo = max(0, step - self.context_len + 1)
-                groups.setdefault(step - lo + 1, []).append(
+                groups.setdefault(step > lo, []).append(
                     (batch * capacity + slot, int(episode), lo, step + 1)
                 )
         if not groups:
@@ -152,21 +177,8 @@ class KnnDtqnAgent(DtqnAgent):
             for windows in groups.values():
                 for offset in range(0, len(windows), self.PREFIX_CHUNK_SIZE):
                     chunk = windows[offset : offset + self.PREFIX_CHUNK_SIZE]
-                    obss = np.stack(
-                        [self.replay_buffer.obss[ep, lo:hi] for _, ep, lo, hi in chunk]
-                    )
-                    actions = np.stack(
-                        [
-                            self.replay_buffer.actions[ep, lo:hi]
-                            for _, ep, lo, hi in chunk
-                        ]
-                    )
-                    keys, values = network.newest_kv(
-                        torch.as_tensor(
-                            obss, dtype=self.obs_tensor_type, device=self.device
-                        ),
-                        torch.as_tensor(actions, dtype=torch.long, device=self.device),
-                    )
+                    obss, actions, last = self._padded_windows(chunk)
+                    keys, values = network.kv_at(obss, actions, last)
                     keys_parts.append(keys)
                     values_parts.append(values)
                     positions.extend(row[0] for row in chunk)
