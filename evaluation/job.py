@@ -4,7 +4,7 @@ import logging
 import random
 from contextlib import contextmanager
 from pathlib import Path
-from typing import Any, Dict, Iterator, List
+from typing import Any, Dict, Iterator, List, Optional
 
 import numpy as np
 import torch
@@ -140,7 +140,13 @@ def next_attempt_dir(run_dir: Path) -> Path:
     return run_dir / f"{ATTEMPT_PREFIX}{len(attempts) + 1:03d}"
 
 
-def run_job(job: RunJob, raw_dir: Path, artifacts_dir: Path, device: str) -> None:
+def run_job(
+    job: RunJob,
+    raw_dir: Path,
+    artifacts_dir: Path,
+    device: str,
+    execution: Optional[Dict[str, Any]] = None,
+) -> None:
     config = job.config
     artifacts = next_attempt_dir(artifacts_dir / job.run_id)
     logger.info("Training %s in %s", job.run_id, artifacts)
@@ -163,6 +169,7 @@ def run_job(job: RunJob, raw_dir: Path, artifacts_dir: Path, device: str) -> Non
         "eval_interval": job.eval_interval,
         "eval_steps": sorted({record.step for record in collector.records}),
         "artifacts": str(artifacts.resolve()),
+        "execution": execution or {},
         **{key: training[key] for key in SAVED_TRAINING_FIELDS},
     }
     write_json(metadata_path(raw_dir, job.run_id), metadata)
